@@ -69,6 +69,3 @@ bin\Release\net8.0-windows\win-x64\publish\
 
 ---
 
-## 📄 License
-
-MIT — free to use, modify and distribute.
