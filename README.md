@@ -28,7 +28,7 @@
 
 ## 🚀 Installation
 
-1. Download the latest `DataHeater.exe` from [Releases](../../releases)
+1. Download the latest `DataHeater.exe` from [Releases](../../releases) (todo)
 2. Double-click — no installation required
 
 ---
@@ -57,7 +57,7 @@ To flip the direction, click the **→** arrow button between the two panels.
 ## 📦 Build from Source
 
 ```bash
-git clone https://github.com/YOURNAME/DataHeater.git
+git clone https://github.com/pfurpass/DataHeater.git
 cd DataHeater
 dotnet publish -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true
 ```
