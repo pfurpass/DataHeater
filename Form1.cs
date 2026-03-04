@@ -49,6 +49,7 @@ namespace DataHeater
             UpdateDirectionUI();
             listTables.Items.Clear();
             lblStatus.Text = "Richtung geändert – bitte neu verbinden.";
+            lblStatus.ForeColor = Color.DarkOrange;
         }
 
         private string BuildMariaDbConnectionString() =>
@@ -61,6 +62,7 @@ namespace DataHeater
         {
             try
             {
+                lblStatus.ForeColor = Color.Gray;
                 lblStatus.Text = "Verbinde...";
                 sqliteDb = new SqliteDatabase(BuildSqliteConnectionString());
                 mariaDb = new MariaDbDatabase(BuildMariaDbConnectionString());
@@ -73,10 +75,12 @@ namespace DataHeater
                 foreach (var t in tables)
                     listTables.Items.Add(t);
 
+                lblStatus.ForeColor = Color.Green;
                 lblStatus.Text = $"✅ Verbunden! {listTables.Items.Count} Tabellen gefunden.";
             }
             catch (Exception ex)
             {
+                lblStatus.ForeColor = Color.Red;
                 lblStatus.Text = "❌ Fehler: " + ex.Message;
                 MessageBox.Show(ex.Message, "Verbindungsfehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -93,7 +97,6 @@ namespace DataHeater
 
             string sqlitePath = txtSqlitePath.Text;
 
-            // Wenn Ziel = SQLite → SaveDialog
             if (!_sqliteToMariaDb)
             {
                 using var dlg = new SaveFileDialog();
@@ -108,12 +111,14 @@ namespace DataHeater
             try
             {
                 btnMigrate.Enabled = false;
+                btnConnect.Enabled = false;
                 int total = listTables.SelectedItems.Count;
                 int count = 0;
 
                 foreach (var selected in listTables.SelectedItems)
                 {
                     string tableName = selected.ToString();
+                    lblStatus.ForeColor = Color.DarkBlue;
                     lblStatus.Text = $"⏳ Migriere '{tableName}'... ({count + 1}/{total})";
                     Application.DoEvents();
 
@@ -121,18 +126,31 @@ namespace DataHeater
                     {
                         var data = await sqliteDb.GetTableDataAsync(tableName);
                         await mariaDb.CreateTableIfNotExistsAsync(data, tableName);
+                        if (rbReplace.Checked)
+                        {
+                            lblStatus.Text = $"🗑️ Lösche '{tableName}'... ({count + 1}/{total})";
+                            Application.DoEvents();
+                            await mariaDb.TruncateTableAsync(tableName);
+                        }
                         await mariaDb.InsertDataAsync(tableName, data);
                     }
                     else
                     {
                         var data = await mariaDb.GetTableDataAsync(tableName);
                         await sqliteDb.CreateTableIfNotExistsAsync(data, tableName);
+                        if (rbReplace.Checked)
+                        {
+                            lblStatus.Text = $"🗑️ Lösche '{tableName}'... ({count + 1}/{total})";
+                            Application.DoEvents();
+                            await sqliteDb.TruncateTableAsync(tableName);
+                        }
                         await sqliteDb.InsertDataAsync(tableName, data);
                     }
                     count++;
                 }
 
-                lblStatus.Text = $"✅ Migration abgeschlossen! {count} Tabelle(n) migriert.";
+                lblStatus.ForeColor = Color.Green;
+                lblStatus.Text = $"✅ Fertig! {count} Tabelle(n) migriert.";
 
                 if (!_sqliteToMariaDb)
                 {
@@ -150,12 +168,14 @@ namespace DataHeater
             }
             catch (Exception ex)
             {
+                lblStatus.ForeColor = Color.Red;
                 lblStatus.Text = "❌ Fehler: " + ex.Message;
                 MessageBox.Show(ex.Message, "Migrationsfehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
                 btnMigrate.Enabled = true;
+                btnConnect.Enabled = true;
             }
         }
     }

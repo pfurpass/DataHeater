@@ -32,9 +32,13 @@
             btnConnect = new Button();
             btnMigrate = new Button();
             lblStatus = new Label();
+            grpMode = new GroupBox();
+            rbInsert = new RadioButton();
+            rbReplace = new RadioButton();
             grpSqlite.SuspendLayout();
             grpMariaDb.SuspendLayout();
             grpTables.SuspendLayout();
+            grpMode.SuspendLayout();
             SuspendLayout();
 
             // grpSqlite
@@ -150,7 +154,7 @@
             grpTables.Controls.Add(listTables);
             grpTables.Location = new Point(10, 175);
             grpTables.Name = "grpTables";
-            grpTables.Size = new Size(860, 220);
+            grpTables.Size = new Size(860, 200);
             grpTables.TabIndex = 3;
             grpTables.TabStop = false;
             grpTables.Text = "Tabellen (Mehrfachauswahl mit Strg+Klick)";
@@ -160,11 +164,36 @@
             listTables.Location = new Point(10, 22);
             listTables.Name = "listTables";
             listTables.SelectionMode = SelectionMode.MultiExtended;
-            listTables.Size = new Size(838, 186);
+            listTables.Size = new Size(838, 168);
             listTables.TabIndex = 0;
 
+            // grpMode
+            grpMode.Controls.Add(rbInsert);
+            grpMode.Controls.Add(rbReplace);
+            grpMode.Location = new Point(10, 385);
+            grpMode.Name = "grpMode";
+            grpMode.Size = new Size(310, 50);
+            grpMode.TabIndex = 6;
+            grpMode.TabStop = false;
+            grpMode.Text = "Migrationsmodus";
+
+            // rbInsert
+            rbInsert.AutoSize = true;
+            rbInsert.Checked = true;
+            rbInsert.Location = new Point(10, 22);
+            rbInsert.Name = "rbInsert";
+            rbInsert.TabIndex = 0;
+            rbInsert.Text = "Nur einfügen (INSERT)";
+
+            // rbReplace
+            rbReplace.AutoSize = true;
+            rbReplace.Location = new Point(165, 22);
+            rbReplace.Name = "rbReplace";
+            rbReplace.TabIndex = 1;
+            rbReplace.Text = "Löschen + neu einfügen";
+
             // btnConnect
-            btnConnect.Location = new Point(10, 408);
+            btnConnect.Location = new Point(330, 395);
             btnConnect.Name = "btnConnect";
             btnConnect.Size = new Size(130, 35);
             btnConnect.TabIndex = 4;
@@ -176,7 +205,7 @@
             btnMigrate.BackColor = Color.SteelBlue;
             btnMigrate.ForeColor = Color.White;
             btnMigrate.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            btnMigrate.Location = new Point(150, 408);
+            btnMigrate.Location = new Point(470, 395);
             btnMigrate.Name = "btnMigrate";
             btnMigrate.Size = new Size(130, 35);
             btnMigrate.TabIndex = 5;
@@ -186,20 +215,21 @@
 
             // lblStatus
             lblStatus.AutoSize = false;
-            lblStatus.Location = new Point(295, 418);
+            lblStatus.Location = new Point(615, 405);
             lblStatus.Name = "lblStatus";
-            lblStatus.Size = new Size(575, 20);
+            lblStatus.Size = new Size(255, 20);
             lblStatus.Text = "Bereit.";
             lblStatus.ForeColor = Color.Gray;
 
             // Form1
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(880, 455);
+            ClientSize = new Size(880, 445);
             Controls.Add(grpSqlite);
             Controls.Add(btnDirection);
             Controls.Add(grpMariaDb);
             Controls.Add(grpTables);
+            Controls.Add(grpMode);
             Controls.Add(btnConnect);
             Controls.Add(btnMigrate);
             Controls.Add(lblStatus);
@@ -208,6 +238,7 @@
             grpSqlite.ResumeLayout(false);
             grpMariaDb.ResumeLayout(false);
             grpTables.ResumeLayout(false);
+            grpMode.ResumeLayout(false);
             ResumeLayout(false);
         }
 
@@ -223,5 +254,8 @@
         private Button btnConnect;
         private Button btnMigrate;
         private Label lblStatus;
+        private GroupBox grpMode;
+        private RadioButton rbInsert;
+        private RadioButton rbReplace;
     }
 }
