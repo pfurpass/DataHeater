@@ -7,7 +7,7 @@ using System.Linq;
 
 namespace DataHeater.Helper
 {
-    internal class MariaDbDatabase
+    internal class MariaDbDatabase : ITargetDatabase
     {
         private readonly string _connectionString;
 
@@ -33,7 +33,6 @@ namespace DataHeater.Helper
             using var conn = new MySqlConnection(_connectionString);
             await conn.OpenAsync();
 
-            // Echte MariaDB Spaltentypen via INFORMATION_SCHEMA lesen
             var columnTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
             using (var schemaCmd = new MySqlCommand(
                 "SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
@@ -42,11 +41,7 @@ namespace DataHeater.Helper
                 schemaCmd.Parameters.AddWithValue("@t", tableName);
                 using var schemaReader = await schemaCmd.ExecuteReaderAsync();
                 while (await schemaReader.ReadAsync())
-                {
-                    string colName = schemaReader.GetString(0);
-                    string colType = schemaReader.GetString(1).ToUpper(); // z.B. "BIGINT(20)", "VARCHAR(255)", "DATE"
-                    columnTypes[colName] = colType;
-                }
+                    columnTypes[schemaReader.GetString(0)] = schemaReader.GetString(1).ToUpper();
             }
 
             using var cmd = new MySqlCommand($"SELECT * FROM `{tableName}`", conn);
@@ -54,12 +49,9 @@ namespace DataHeater.Helper
             var table = new DataTable();
             adapter.Fill(table);
 
-            // MariaDB-Typ in ExtendedProperties speichern
             foreach (DataColumn col in table.Columns)
-            {
                 if (columnTypes.ContainsKey(col.ColumnName))
                     col.ExtendedProperties["MariaDbType"] = columnTypes[col.ColumnName];
-            }
 
             return table;
         }
@@ -71,10 +63,11 @@ namespace DataHeater.Helper
             var columns = new List<string>();
             foreach (DataColumn col in schema.Columns)
             {
-                string sqliteType = col.ExtendedProperties.Contains("SqliteType")
-                    ? col.ExtendedProperties["SqliteType"].ToString().ToUpper()
-                    : null;
-                string mariaType = MapToMariaDb(col.DataType, sqliteType);
+                string sourceType =
+                    col.ExtendedProperties.Contains("SqliteType") ? col.ExtendedProperties["SqliteType"].ToString().ToUpper() :
+                    col.ExtendedProperties.Contains("PostgresType") ? col.ExtendedProperties["PostgresType"].ToString().ToUpper() :
+                    null;
+                string mariaType = MapToMariaDb(col.DataType, sourceType);
                 columns.Add($"`{col.ColumnName}` {mariaType}");
             }
             string sql = $"CREATE TABLE IF NOT EXISTS `{tableName}` ({string.Join(",", columns)})";
@@ -107,21 +100,24 @@ namespace DataHeater.Helper
             }
         }
 
-        private string MapToMariaDb(Type type, string sqliteType = null)
+        private string MapToMariaDb(Type type, string sourceType = null)
         {
-            if (sqliteType != null)
+            if (sourceType != null)
             {
-                if (sqliteType == "DATE") return "DATE";
-                if (sqliteType.Contains("DATETIME")) return "DATETIME";
-                if (sqliteType.Contains("TIME")) return "TIME";
-                if (sqliteType.Contains("INT")) return "BIGINT";
-                if (sqliteType.Contains("REAL") || sqliteType.Contains("FLOAT")
-                                                || sqliteType.Contains("DOUBLE")) return "DOUBLE";
-                if (sqliteType.Contains("NUMERIC") || sqliteType.Contains("DECIMAL")) return "DECIMAL(18,2)";
-                if (sqliteType.Contains("BOOL")) return "BOOLEAN";
-                if (sqliteType.Contains("BLOB")) return "LONGBLOB";
-                if (sqliteType == "TEXT") return "TEXT";
-                if (!string.IsNullOrWhiteSpace(sqliteType)) return sqliteType;
+                if (sourceType == "DATE") return "DATE";
+                if (sourceType.Contains("DATETIME") || sourceType.Contains("TIMESTAMP")) return "DATETIME";
+                if (sourceType.Contains("TIME")) return "TIME";
+                if (sourceType.Contains("TINYINT(1)") || sourceType.Contains("BOOL")) return "BOOLEAN";
+                if (sourceType.Contains("INT4") || sourceType.Contains("INT8")) return "BIGINT";
+                if (sourceType.Contains("INT")) return "BIGINT";
+                if (sourceType.Contains("FLOAT8") || sourceType.Contains("FLOAT4")
+                                                   || sourceType.Contains("DOUBLE")
+                                                   || sourceType.Contains("FLOAT")) return "DOUBLE";
+                if (sourceType.Contains("NUMERIC") || sourceType.Contains("DECIMAL")) return "DECIMAL(18,2)";
+                if (sourceType.Contains("BYTEA") || sourceType.Contains("BLOB")) return "LONGBLOB";
+                if (sourceType.Contains("TEXT")) return "TEXT";
+                if (sourceType.StartsWith("VARCHAR") || sourceType.StartsWith("CHAR")) return sourceType;
+                if (!string.IsNullOrWhiteSpace(sourceType)) return sourceType;
             }
 
             if (type == typeof(long) || type == typeof(int)) return "BIGINT";
