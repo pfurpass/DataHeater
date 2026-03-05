@@ -32,10 +32,35 @@ namespace DataHeater.Helper
         {
             using var conn = new MySqlConnection(_connectionString);
             await conn.OpenAsync();
+
+            // Echte MariaDB Spaltentypen via INFORMATION_SCHEMA lesen
+            var columnTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            using (var schemaCmd = new MySqlCommand(
+                "SELECT COLUMN_NAME, COLUMN_TYPE FROM INFORMATION_SCHEMA.COLUMNS " +
+                "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = @t ORDER BY ORDINAL_POSITION", conn))
+            {
+                schemaCmd.Parameters.AddWithValue("@t", tableName);
+                using var schemaReader = await schemaCmd.ExecuteReaderAsync();
+                while (await schemaReader.ReadAsync())
+                {
+                    string colName = schemaReader.GetString(0);
+                    string colType = schemaReader.GetString(1).ToUpper(); // z.B. "BIGINT(20)", "VARCHAR(255)", "DATE"
+                    columnTypes[colName] = colType;
+                }
+            }
+
             using var cmd = new MySqlCommand($"SELECT * FROM `{tableName}`", conn);
             using var adapter = new MySqlDataAdapter(cmd);
             var table = new DataTable();
             adapter.Fill(table);
+
+            // MariaDB-Typ in ExtendedProperties speichern
+            foreach (DataColumn col in table.Columns)
+            {
+                if (columnTypes.ContainsKey(col.ColumnName))
+                    col.ExtendedProperties["MariaDbType"] = columnTypes[col.ColumnName];
+            }
+
             return table;
         }
 
@@ -46,8 +71,11 @@ namespace DataHeater.Helper
             var columns = new List<string>();
             foreach (DataColumn col in schema.Columns)
             {
-                string type = MapType(col.DataType);
-                columns.Add($"`{col.ColumnName}` {type}");
+                string sqliteType = col.ExtendedProperties.Contains("SqliteType")
+                    ? col.ExtendedProperties["SqliteType"].ToString().ToUpper()
+                    : null;
+                string mariaType = MapToMariaDb(col.DataType, sqliteType);
+                columns.Add($"`{col.ColumnName}` {mariaType}");
             }
             string sql = $"CREATE TABLE IF NOT EXISTS `{tableName}` ({string.Join(",", columns)})";
             using var cmd = new MySqlCommand(sql, conn);
@@ -68,24 +96,40 @@ namespace DataHeater.Helper
             await conn.OpenAsync();
             foreach (DataRow row in data.Rows)
             {
-                var columns = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"`{c.ColumnName}`"));
-                var values = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
-                string sql = $"INSERT INTO `{tableName}` ({columns}) VALUES ({values})";
+                var cols = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"`{c.ColumnName}`"));
+                var vals = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
+                string sql = $"INSERT INTO `{tableName}` ({cols}) VALUES ({vals})";
                 using var cmd = new MySqlCommand(sql, conn);
                 foreach (DataColumn col in data.Columns)
-                    cmd.Parameters.AddWithValue($"@{col.ColumnName}", row[col]);
+                    cmd.Parameters.AddWithValue($"@{col.ColumnName}",
+                        row[col] == DBNull.Value ? DBNull.Value : row[col]);
                 await cmd.ExecuteNonQueryAsync();
             }
         }
 
-        private string MapType(Type type)
+        private string MapToMariaDb(Type type, string sqliteType = null)
         {
-            if (type == typeof(int)) return "INT";
-            if (type == typeof(long)) return "BIGINT";
-            if (type == typeof(double)) return "DOUBLE";
+            if (sqliteType != null)
+            {
+                if (sqliteType == "DATE") return "DATE";
+                if (sqliteType.Contains("DATETIME")) return "DATETIME";
+                if (sqliteType.Contains("TIME")) return "TIME";
+                if (sqliteType.Contains("INT")) return "BIGINT";
+                if (sqliteType.Contains("REAL") || sqliteType.Contains("FLOAT")
+                                                || sqliteType.Contains("DOUBLE")) return "DOUBLE";
+                if (sqliteType.Contains("NUMERIC") || sqliteType.Contains("DECIMAL")) return "DECIMAL(18,2)";
+                if (sqliteType.Contains("BOOL")) return "BOOLEAN";
+                if (sqliteType.Contains("BLOB")) return "LONGBLOB";
+                if (sqliteType == "TEXT") return "TEXT";
+                if (!string.IsNullOrWhiteSpace(sqliteType)) return sqliteType;
+            }
+
+            if (type == typeof(long) || type == typeof(int)) return "BIGINT";
+            if (type == typeof(double) || type == typeof(float)) return "DOUBLE";
             if (type == typeof(decimal)) return "DECIMAL(18,2)";
-            if (type == typeof(DateTime)) return "DATETIME";
             if (type == typeof(bool)) return "BOOLEAN";
+            if (type == typeof(DateTime)) return "DATETIME";
+            if (type == typeof(byte[])) return "LONGBLOB";
             return "TEXT";
         }
     }
