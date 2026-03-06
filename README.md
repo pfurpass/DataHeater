@@ -28,7 +28,7 @@
 
 ## 🚀 Installation
 
-1. Download the latest `DataHeater.exe` from [Releases](../../releases) (todo)
+1. Download the latest `DataHeater.exe` from [Releases](../../releases)
 2. Double-click — no installation required
 
 ---
