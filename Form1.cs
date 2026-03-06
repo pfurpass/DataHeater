@@ -11,6 +11,8 @@ namespace DataHeater
     {
         private readonly List<DbTarget> _sources = new();
         private readonly List<DbTarget> _targets = new();
+        private int _editingSourceIndex = -1;
+        private int _editingTargetIndex = -1;
 
         private class TableEntry
         {
@@ -77,9 +79,28 @@ namespace DataHeater
             var target = BuildTargetFromPanel(cmbSrcType, txtSrcPath,
                 txtSrcHost, txtSrcPort, txtSrcDatabase, txtSrcUsername, txtSrcPassword, isSource: true);
             if (target == null) return;
-            _sources.Add(target);
-            int idx = chkSources.Items.Add(target);
-            chkSources.SetItemChecked(idx, true);
+
+            if (_editingSourceIndex >= 0)
+            {
+                bool wasChecked = chkSources.GetItemChecked(_editingSourceIndex);
+                _sources[_editingSourceIndex] = target;
+                chkSources.Items[_editingSourceIndex] = target;
+                chkSources.SetItemChecked(_editingSourceIndex, wasChecked);
+                _editingSourceIndex = -1;
+                btnAddSource.Text = "➕ Hinzufügen";
+                btnEditSource.Text = "✏️ Bearbeiten";
+                btnEditSource.Click -= btnCancelEditSource_Click;
+                btnEditSource.Click += btnEditSource_Click;
+                listTables.Items.Clear();
+                lblStatus.ForeColor = Color.DarkOrange;
+                lblStatus.Text = "✏️ Eintrag aktualisiert – bitte neu verbinden.";
+            }
+            else
+            {
+                _sources.Add(target);
+                int idx = chkSources.Items.Add(target);
+                chkSources.SetItemChecked(idx, true);
+            }
         }
 
         private void btnRemoveSource_Click(object sender, EventArgs e)
@@ -90,14 +111,59 @@ namespace DataHeater
             chkSources.Items.RemoveAt(idx);
         }
 
+        private void btnEditSource_Click(object sender, EventArgs e)
+        {
+            if (chkSources.SelectedIndex < 0)
+            {
+                MessageBox.Show("Bitte einen Eintrag auswählen!", "Hinweis",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            int idx = chkSources.SelectedIndex;
+            LoadIntoPanel(_sources[idx], cmbSrcType, txtSrcPath,
+                txtSrcHost, txtSrcPort, txtSrcDatabase, txtSrcUsername, txtSrcPassword);
+            _editingSourceIndex = idx;
+            btnAddSource.Text = "💾 Speichern";
+            btnEditSource.Text = "❌ Abbrechen";
+            btnEditSource.Click -= btnEditSource_Click;
+            btnEditSource.Click += btnCancelEditSource_Click;
+        }
+
+        private void btnCancelEditSource_Click(object sender, EventArgs e)
+        {
+            _editingSourceIndex = -1;
+            btnAddSource.Text = "➕ Hinzufügen";
+            btnEditSource.Text = "✏️ Bearbeiten";
+            btnEditSource.Click -= btnCancelEditSource_Click;
+            btnEditSource.Click += btnEditSource_Click;
+        }
+
         private void btnAddTarget_Click(object sender, EventArgs e)
         {
             var target = BuildTargetFromPanel(cmbTgtType, txtTgtPath,
                 txtTgtHost, txtTgtPort, txtTgtDatabase, txtTgtUsername, txtTgtPassword, isSource: false);
             if (target == null) return;
-            _targets.Add(target);
-            int idx = chkTargets.Items.Add(target);
-            chkTargets.SetItemChecked(idx, true);
+
+            if (_editingTargetIndex >= 0)
+            {
+                bool wasChecked = chkTargets.GetItemChecked(_editingTargetIndex);
+                _targets[_editingTargetIndex] = target;
+                chkTargets.Items[_editingTargetIndex] = target;
+                chkTargets.SetItemChecked(_editingTargetIndex, wasChecked);
+                _editingTargetIndex = -1;
+                btnAddTarget.Text = "➕ Hinzufügen";
+                btnEditTarget.Text = "✏️ Bearbeiten";
+                btnEditTarget.Click -= btnCancelEditTarget_Click;
+                btnEditTarget.Click += btnEditTarget_Click;
+                lblStatus.ForeColor = Color.DarkOrange;
+                lblStatus.Text = "✏️ Eintrag aktualisiert – bitte neu verbinden.";
+            }
+            else
+            {
+                _targets.Add(target);
+                int idx = chkTargets.Items.Add(target);
+                chkTargets.SetItemChecked(idx, true);
+            }
         }
 
         private void btnRemoveTarget_Click(object sender, EventArgs e)
@@ -106,6 +172,57 @@ namespace DataHeater
             int idx = chkTargets.SelectedIndex;
             _targets.RemoveAt(idx);
             chkTargets.Items.RemoveAt(idx);
+        }
+
+        private void btnEditTarget_Click(object sender, EventArgs e)
+        {
+            if (chkTargets.SelectedIndex < 0)
+            {
+                MessageBox.Show("Bitte einen Eintrag auswählen!", "Hinweis",
+                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+            int idx = chkTargets.SelectedIndex;
+            LoadIntoPanel(_targets[idx], cmbTgtType, txtTgtPath,
+                txtTgtHost, txtTgtPort, txtTgtDatabase, txtTgtUsername, txtTgtPassword);
+            _editingTargetIndex = idx;
+            btnAddTarget.Text = "💾 Speichern";
+            btnEditTarget.Text = "❌ Abbrechen";
+            btnEditTarget.Click -= btnEditTarget_Click;
+            btnEditTarget.Click += btnCancelEditTarget_Click;
+        }
+
+        private void btnCancelEditTarget_Click(object sender, EventArgs e)
+        {
+            _editingTargetIndex = -1;
+            btnAddTarget.Text = "➕ Hinzufügen";
+            btnEditTarget.Text = "✏️ Bearbeiten";
+            btnEditTarget.Click -= btnCancelEditTarget_Click;
+            btnEditTarget.Click += btnEditTarget_Click;
+        }
+
+        private void LoadIntoPanel(DbTarget t,
+            ComboBox cmbType, TextBox txtPath,
+            TextBox txtHost, TextBox txtPort,
+            TextBox txtDb, TextBox txtUser, TextBox txtPwd)
+        {
+            cmbType.SelectedItem = t.Type switch
+            {
+                DbType.PostgreSQL => "PostgreSQL",
+                DbType.MariaDB => "MariaDB",
+                _ => "SQLite"
+            };
+
+            if (t.Type == DbType.SQLite)
+                txtPath.Text = t.Database;
+            else
+            {
+                txtHost.Text = t.Host;
+                txtPort.Text = t.Port;
+                txtDb.Text = t.Database;
+                txtUser.Text = t.Username;
+                txtPwd.Text = t.Password;
+            }
         }
 
         private DbTarget BuildTargetFromPanel(
@@ -227,10 +344,8 @@ namespace DataHeater
                 for (int i = 0; i < chkSources.Items.Count; i++)
                 {
                     if (!chkSources.GetItemChecked(i)) continue;
-
                     var sourceDb = BuildDb(_sources[i]);
                     var tables = await sourceDb.GetTablesAsync();
-
                     foreach (var t in tables)
                     {
                         int idx = listTables.Items.Add(new TableEntry(_sources)
@@ -269,7 +384,6 @@ namespace DataHeater
             }
 
             var checkedEntries = listTables.CheckedItems.Cast<TableEntry>().ToList();
-
             var duplicates = checkedEntries
                 .GroupBy(e => e.TableName)
                 .Where(g => g.Count() > 1)
@@ -296,7 +410,6 @@ namespace DataHeater
                 foreach (var entry in checkedEntries)
                 {
                     count++;
-
                     string targetName = entry.TableName;
                     if (chkRenameDuplicates.Checked && duplicates.Contains(entry.TableName))
                     {

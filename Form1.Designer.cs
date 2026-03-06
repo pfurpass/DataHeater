@@ -31,6 +31,7 @@
             txtSrcPassword = new TextBox();
             btnAddSource = new Button();
             btnRemoveSource = new Button();
+            btnEditSource = new Button();
             chkSources = new CheckedListBox();
             btnDirection = new Button();
             grpTargets = new GroupBox();
@@ -52,6 +53,7 @@
             txtTgtPassword = new TextBox();
             btnAddTarget = new Button();
             btnRemoveTarget = new Button();
+            btnEditTarget = new Button();
             chkTargets = new CheckedListBox();
             grpTables = new GroupBox();
             listTables = new CheckedListBox();
@@ -80,6 +82,7 @@
             grpSource.Controls.Add(lblSrcType); grpSource.Controls.Add(cmbSrcType);
             grpSource.Controls.Add(pnlSrcSqlite); grpSource.Controls.Add(pnlSrcDb);
             grpSource.Controls.Add(btnAddSource); grpSource.Controls.Add(btnRemoveSource);
+            grpSource.Controls.Add(btnEditSource);
             grpSource.Controls.Add(chkSources);
             grpSource.Location = new Point(10, 10); grpSource.Size = new Size(400, 275);
             grpSource.TabStop = false; grpSource.Text = "Quelle";
@@ -115,10 +118,12 @@
             lblSrcPassword.AutoSize = true; lblSrcPassword.Location = new Point(0, 95); lblSrcPassword.Text = "Passwort:";
             txtSrcPassword.Location = new Point(75, 93); txtSrcPassword.Size = new Size(295, 23); txtSrcPassword.PasswordChar = '●';
 
-            btnAddSource.Location = new Point(10, 190); btnAddSource.Size = new Size(130, 28); btnAddSource.Text = "➕ Hinzufügen";
+            btnAddSource.Location = new Point(10, 190); btnAddSource.Size = new Size(110, 28); btnAddSource.Text = "➕ Hinzufügen";
             btnAddSource.UseVisualStyleBackColor = true; btnAddSource.Click += btnAddSource_Click;
-            btnRemoveSource.Location = new Point(148, 190); btnRemoveSource.Size = new Size(130, 28); btnRemoveSource.Text = "➖ Entfernen";
+            btnRemoveSource.Location = new Point(128, 190); btnRemoveSource.Size = new Size(110, 28); btnRemoveSource.Text = "➖ Entfernen";
             btnRemoveSource.UseVisualStyleBackColor = true; btnRemoveSource.Click += btnRemoveSource_Click;
+            btnEditSource.Location = new Point(246, 190); btnEditSource.Size = new Size(110, 28); btnEditSource.Text = "✏️ Bearbeiten";
+            btnEditSource.UseVisualStyleBackColor = true; btnEditSource.Click += btnEditSource_Click;
 
             chkSources.FormattingEnabled = true; chkSources.Location = new Point(10, 225);
             chkSources.Size = new Size(378, 42); chkSources.CheckOnClick = true;
@@ -132,6 +137,7 @@
             grpTargets.Controls.Add(lblTgtType); grpTargets.Controls.Add(cmbTgtType);
             grpTargets.Controls.Add(pnlTgtSqlite); grpTargets.Controls.Add(pnlTgtDb);
             grpTargets.Controls.Add(btnAddTarget); grpTargets.Controls.Add(btnRemoveTarget);
+            grpTargets.Controls.Add(btnEditTarget);
             grpTargets.Controls.Add(chkTargets);
             grpTargets.Location = new Point(480, 10); grpTargets.Size = new Size(410, 275);
             grpTargets.TabStop = false; grpTargets.Text = "Ziele";
@@ -167,10 +173,12 @@
             lblTgtPassword.AutoSize = true; lblTgtPassword.Location = new Point(0, 95); lblTgtPassword.Text = "Passwort:";
             txtTgtPassword.Location = new Point(75, 93); txtTgtPassword.Size = new Size(305, 23); txtTgtPassword.PasswordChar = '●';
 
-            btnAddTarget.Location = new Point(10, 190); btnAddTarget.Size = new Size(130, 28); btnAddTarget.Text = "➕ Hinzufügen";
+            btnAddTarget.Location = new Point(10, 190); btnAddTarget.Size = new Size(110, 28); btnAddTarget.Text = "➕ Hinzufügen";
             btnAddTarget.UseVisualStyleBackColor = true; btnAddTarget.Click += btnAddTarget_Click;
-            btnRemoveTarget.Location = new Point(148, 190); btnRemoveTarget.Size = new Size(130, 28); btnRemoveTarget.Text = "➖ Entfernen";
+            btnRemoveTarget.Location = new Point(128, 190); btnRemoveTarget.Size = new Size(110, 28); btnRemoveTarget.Text = "➖ Entfernen";
             btnRemoveTarget.UseVisualStyleBackColor = true; btnRemoveTarget.Click += btnRemoveTarget_Click;
+            btnEditTarget.Location = new Point(246, 190); btnEditTarget.Size = new Size(110, 28); btnEditTarget.Text = "✏️ Bearbeiten";
+            btnEditTarget.UseVisualStyleBackColor = true; btnEditTarget.Click += btnEditTarget_Click;
 
             chkTargets.FormattingEnabled = true; chkTargets.Location = new Point(10, 225);
             chkTargets.Size = new Size(388, 42); chkTargets.CheckOnClick = true;
@@ -193,7 +201,6 @@
 
             btnCheckAll.Location = new Point(10, 138); btnCheckAll.Size = new Size(100, 26); btnCheckAll.Text = "☑ Alle";
             btnCheckAll.UseVisualStyleBackColor = true; btnCheckAll.Click += btnCheckAll_Click;
-
             btnCheckNone.Location = new Point(118, 138); btnCheckNone.Size = new Size(100, 26); btnCheckNone.Text = "☐ Keine";
             btnCheckNone.UseVisualStyleBackColor = true; btnCheckNone.Click += btnCheckNone_Click;
 
@@ -250,7 +257,7 @@
         private Panel pnlSrcDb;
         private Label lblSrcHost, lblSrcPort, lblSrcDatabase, lblSrcUsername, lblSrcPassword;
         private TextBox txtSrcHost, txtSrcPort, txtSrcDatabase, txtSrcUsername, txtSrcPassword;
-        private Button btnAddSource, btnRemoveSource;
+        private Button btnAddSource, btnRemoveSource, btnEditSource;
         private CheckedListBox chkSources;
         private Button btnDirection;
         private GroupBox grpTargets;
@@ -262,7 +269,7 @@
         private Panel pnlTgtDb;
         private Label lblTgtHost, lblTgtPort, lblTgtDatabase, lblTgtUsername, lblTgtPassword;
         private TextBox txtTgtHost, txtTgtPort, txtTgtDatabase, txtTgtUsername, txtTgtPassword;
-        private Button btnAddTarget, btnRemoveTarget;
+        private Button btnAddTarget, btnRemoveTarget, btnEditTarget;
         private CheckedListBox chkTargets;
         private GroupBox grpTables;
         private CheckedListBox listTables;
