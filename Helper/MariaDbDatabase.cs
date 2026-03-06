@@ -10,14 +10,29 @@ namespace DataHeater.Helper
     internal class MariaDbDatabase : ITargetDatabase
     {
         private readonly string _connectionString;
+        private readonly string _connectionStringWithoutDb;
+        private readonly string _databaseName;
 
-        public MariaDbDatabase(string connectionString)
+        public MariaDbDatabase(string connectionString, string connectionStringWithoutDb, string databaseName)
         {
             _connectionString = connectionString;
+            _connectionStringWithoutDb = connectionStringWithoutDb;
+            _databaseName = databaseName;
+        }
+
+        private async Task EnsureDatabaseExistsAsync()
+        {
+            using var conn = new MySqlConnection(_connectionStringWithoutDb);
+            await conn.OpenAsync();
+            using var cmd = new MySqlCommand(
+                $"CREATE DATABASE IF NOT EXISTS `{_databaseName}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;",
+                conn);
+            await cmd.ExecuteNonQueryAsync();
         }
 
         public async Task<List<string>> GetTablesAsync()
         {
+            await EnsureDatabaseExistsAsync();
             var tables = new List<string>();
             using var conn = new MySqlConnection(_connectionString);
             await conn.OpenAsync();
@@ -75,6 +90,7 @@ namespace DataHeater.Helper
 
         public async Task CreateTableIfNotExistsAsync(DataTable schema, string tableName)
         {
+            await EnsureDatabaseExistsAsync();
             using var conn = new MySqlConnection(_connectionString);
             await conn.OpenAsync();
             var columns = new List<string>();

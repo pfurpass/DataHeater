@@ -11,14 +11,38 @@ namespace DataHeater.Helper
     internal class PostgresDatabase : ITargetDatabase
     {
         private readonly string _connectionString;
+        private readonly string _connectionStringWithoutDb;
+        private readonly string _databaseName;
 
-        public PostgresDatabase(string connectionString)
+        public PostgresDatabase(string connectionString, string connectionStringWithoutDb, string databaseName)
         {
             _connectionString = connectionString;
+            _connectionStringWithoutDb = connectionStringWithoutDb;
+            _databaseName = databaseName;
+        }
+
+        private async Task EnsureDatabaseExistsAsync()
+        {
+            using var conn = new NpgsqlConnection(_connectionStringWithoutDb);
+            await conn.OpenAsync();
+
+            // PostgreSQL: CREATE DATABASE IF NOT EXISTS gibt es nicht — erst prüfen
+            using var checkCmd = new NpgsqlCommand(
+                "SELECT 1 FROM pg_database WHERE datname = @name", conn);
+            checkCmd.Parameters.AddWithValue("@name", _databaseName.ToLower());
+            var exists = await checkCmd.ExecuteScalarAsync();
+
+            if (exists == null)
+            {
+                using var createCmd = new NpgsqlCommand(
+                    $"CREATE DATABASE \"{_databaseName}\" ENCODING 'UTF8';", conn);
+                await createCmd.ExecuteNonQueryAsync();
+            }
         }
 
         public async Task<List<string>> GetTablesAsync()
         {
+            await EnsureDatabaseExistsAsync();
             var tables = new List<string>();
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
@@ -77,6 +101,7 @@ namespace DataHeater.Helper
 
         public async Task CreateTableIfNotExistsAsync(DataTable schema, string tableName)
         {
+            await EnsureDatabaseExistsAsync();
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
             var columns = new List<string>();

@@ -202,9 +202,15 @@ namespace DataHeater
 
         private ITargetDatabase BuildDb(DbTarget target) => target.Type switch
         {
-            DbType.PostgreSQL => new PostgresDatabase(target.ConnectionString),
+            DbType.PostgreSQL => new PostgresDatabase(
+                target.ConnectionString,
+                target.ConnectionStringWithoutDb,
+                target.Database),
             DbType.SQLite => new SqliteDatabase(target.ConnectionString),
-            _ => new MariaDbDatabase(target.ConnectionString)
+            _ => new MariaDbDatabase(
+                target.ConnectionString,
+                target.ConnectionStringWithoutDb,
+                target.Database)
         };
 
         private async void btnConnect_Click(object sender, EventArgs e)

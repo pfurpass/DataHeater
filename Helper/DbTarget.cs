@@ -18,6 +18,13 @@
             _ => $"Server={Host};Port={Port};Database={Database};Uid={Username};Pwd={Password};"
         };
 
+        // Verbindung ohne Datenbankname — zum Erstellen der DB
+        public string ConnectionStringWithoutDb => Type switch
+        {
+            DbType.PostgreSQL => $"Host={Host};Port={Port};Database=postgres;Username={Username};Password={Password};",
+            _ => $"Server={Host};Port={Port};Uid={Username};Pwd={Password};"
+        };
+
         public override string ToString() => Type switch
         {
             DbType.SQLite => $"[SQLite] {Database}",
