@@ -25,18 +25,14 @@ namespace DataHeater
         {
             InitializeComponent();
 
-            // Space = ausgewählte Einträge umschalten
             listTables.KeyDown += (s, e) =>
             {
                 if (e.KeyCode == Keys.Space)
                 {
-                    // Prüfen ob alle ausgewählten schon angehakt
                     bool allChecked = listTables.SelectedIndices.Cast<int>()
                         .All(i => listTables.GetItemChecked(i));
-
                     foreach (int i in listTables.SelectedIndices)
                         listTables.SetItemChecked(i, !allChecked);
-
                     e.Handled = true;
                 }
             };
@@ -186,14 +182,12 @@ namespace DataHeater
             lblStatus.Text = "⇄ Getauscht – bitte neu verbinden.";
         }
 
-        // Alle Tabellen anhaken
         private void btnCheckAll_Click(object sender, EventArgs e)
         {
             for (int i = 0; i < listTables.Items.Count; i++)
                 listTables.SetItemChecked(i, true);
         }
 
-        // Alle Tabellen abhaken
         private void btnCheckNone_Click(object sender, EventArgs e)
         {
             for (int i = 0; i < listTables.Items.Count; i++)
@@ -205,12 +199,14 @@ namespace DataHeater
             DbType.PostgreSQL => new PostgresDatabase(
                 target.ConnectionString,
                 target.ConnectionStringWithoutDb,
-                target.Database),
+                target.Database,
+                chkCreateDb.Checked),
             DbType.SQLite => new SqliteDatabase(target.ConnectionString),
             _ => new MariaDbDatabase(
                 target.ConnectionString,
                 target.ConnectionStringWithoutDb,
-                target.Database)
+                target.Database,
+                chkCreateDb.Checked)
         };
 
         private async void btnConnect_Click(object sender, EventArgs e)
@@ -242,7 +238,7 @@ namespace DataHeater
                             TableName = t,
                             SourceIndex = i
                         });
-                        listTables.SetItemChecked(idx, true); // standardmäßig alle angehakt
+                        listTables.SetItemChecked(idx, true);
                     }
                 }
 
@@ -274,7 +270,6 @@ namespace DataHeater
 
             var checkedEntries = listTables.CheckedItems.Cast<TableEntry>().ToList();
 
-            // Duplikate prüfen
             var duplicates = checkedEntries
                 .GroupBy(e => e.TableName)
                 .Where(g => g.Count() > 1)
@@ -287,8 +282,7 @@ namespace DataHeater
                     $"Folgende Tabellennamen kommen in mehreren Quellen vor:\n\n" +
                     string.Join("\n", duplicates) +
                     "\n\nBitte 'Duplikate umbenennen' aktivieren oder die doppelten Tabellen abhaken.",
-                    "Duplikate gefunden!",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    "Duplikate gefunden!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 

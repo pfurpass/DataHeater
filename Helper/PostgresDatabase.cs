@@ -13,25 +13,26 @@ namespace DataHeater.Helper
         private readonly string _connectionString;
         private readonly string _connectionStringWithoutDb;
         private readonly string _databaseName;
+        private readonly bool _createIfNotExists;
 
-        public PostgresDatabase(string connectionString, string connectionStringWithoutDb, string databaseName)
+        public PostgresDatabase(string connectionString, string connectionStringWithoutDb,
+            string databaseName, bool createIfNotExists)
         {
             _connectionString = connectionString;
             _connectionStringWithoutDb = connectionStringWithoutDb;
             _databaseName = databaseName;
+            _createIfNotExists = createIfNotExists;
         }
 
         private async Task EnsureDatabaseExistsAsync()
         {
+            if (!_createIfNotExists) return;
             using var conn = new NpgsqlConnection(_connectionStringWithoutDb);
             await conn.OpenAsync();
-
-            // PostgreSQL: CREATE DATABASE IF NOT EXISTS gibt es nicht — erst prüfen
             using var checkCmd = new NpgsqlCommand(
                 "SELECT 1 FROM pg_database WHERE datname = @name", conn);
             checkCmd.Parameters.AddWithValue("@name", _databaseName.ToLower());
             var exists = await checkCmd.ExecuteScalarAsync();
-
             if (exists == null)
             {
                 using var createCmd = new NpgsqlCommand(

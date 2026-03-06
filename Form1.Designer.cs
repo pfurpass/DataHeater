@@ -58,6 +58,7 @@
             btnCheckAll = new Button();
             btnCheckNone = new Button();
             chkRenameDuplicates = new CheckBox();
+            chkCreateDb = new CheckBox();
             grpMode = new GroupBox();
             rbInsert = new RadioButton();
             rbReplace = new RadioButton();
@@ -179,60 +180,57 @@
             grpTables.Controls.Add(btnCheckAll);
             grpTables.Controls.Add(btnCheckNone);
             grpTables.Controls.Add(chkRenameDuplicates);
+            grpTables.Controls.Add(chkCreateDb);
             grpTables.Location = new Point(10, 295);
-            grpTables.Size = new Size(880, 185);
+            grpTables.Size = new Size(880, 205);
             grpTables.TabStop = false;
             grpTables.Text = "Tabellen";
 
-            // CheckedListBox — CheckOnClick=false für Strg+Klick Mehrfachauswahl
             listTables.FormattingEnabled = true;
             listTables.Location = new Point(10, 22);
             listTables.Size = new Size(858, 110);
-            listTables.CheckOnClick = false;   // ← Strg+Klick zum Markieren, Space zum Anhaken
+            listTables.CheckOnClick = false;
 
-            // Alle anhaken
-            btnCheckAll.Location = new Point(10, 138);
-            btnCheckAll.Size = new Size(100, 26);
-            btnCheckAll.Text = "☑ Alle";
-            btnCheckAll.UseVisualStyleBackColor = true;
-            btnCheckAll.Click += btnCheckAll_Click;
+            btnCheckAll.Location = new Point(10, 138); btnCheckAll.Size = new Size(100, 26); btnCheckAll.Text = "☑ Alle";
+            btnCheckAll.UseVisualStyleBackColor = true; btnCheckAll.Click += btnCheckAll_Click;
 
-            // Alle abhaken
-            btnCheckNone.Location = new Point(118, 138);
-            btnCheckNone.Size = new Size(100, 26);
-            btnCheckNone.Text = "☐ Keine";
-            btnCheckNone.UseVisualStyleBackColor = true;
-            btnCheckNone.Click += btnCheckNone_Click;
+            btnCheckNone.Location = new Point(118, 138); btnCheckNone.Size = new Size(100, 26); btnCheckNone.Text = "☐ Keine";
+            btnCheckNone.UseVisualStyleBackColor = true; btnCheckNone.Click += btnCheckNone_Click;
 
-            // Duplikate Checkbox
             chkRenameDuplicates.AutoSize = true;
             chkRenameDuplicates.Location = new Point(230, 142);
             chkRenameDuplicates.Text = "⚠️ Duplikate automatisch umbenennen – sonst Fehler bei Duplikaten";
             chkRenameDuplicates.Font = new Font("Segoe UI", 8.5F);
             chkRenameDuplicates.ForeColor = Color.DarkOrange;
 
+            chkCreateDb.AutoSize = true;
+            chkCreateDb.Checked = true;
+            chkCreateDb.Location = new Point(10, 170);
+            chkCreateDb.Text = "🗄️ Datenbank automatisch erstellen falls nicht vorhanden";
+            chkCreateDb.Font = new Font("Segoe UI", 8.5F);
+
             // grpMode
             grpMode.Controls.Add(rbInsert); grpMode.Controls.Add(rbReplace);
-            grpMode.Location = new Point(10, 490); grpMode.Size = new Size(310, 50);
+            grpMode.Location = new Point(10, 510); grpMode.Size = new Size(310, 50);
             grpMode.TabStop = false; grpMode.Text = "Migrationsmodus";
 
             rbInsert.AutoSize = true; rbInsert.Checked = true; rbInsert.Location = new Point(10, 22); rbInsert.Text = "Nur einfügen (INSERT)";
             rbReplace.AutoSize = true; rbReplace.Location = new Point(175, 22); rbReplace.Text = "Löschen + neu";
 
-            btnConnect.Location = new Point(330, 498); btnConnect.Size = new Size(130, 35); btnConnect.Text = "🔌 Verbinden";
+            btnConnect.Location = new Point(330, 518); btnConnect.Size = new Size(130, 35); btnConnect.Text = "🔌 Verbinden";
             btnConnect.UseVisualStyleBackColor = true; btnConnect.Click += btnConnect_Click;
 
             btnMigrate.BackColor = Color.SteelBlue; btnMigrate.ForeColor = Color.White;
             btnMigrate.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            btnMigrate.Location = new Point(470, 498); btnMigrate.Size = new Size(130, 35); btnMigrate.Text = "Migrieren →";
+            btnMigrate.Location = new Point(470, 518); btnMigrate.Size = new Size(130, 35); btnMigrate.Text = "Migrieren →";
             btnMigrate.UseVisualStyleBackColor = false; btnMigrate.Click += btnMigrate_Click;
 
-            lblStatus.AutoSize = false; lblStatus.Location = new Point(615, 508);
+            lblStatus.AutoSize = false; lblStatus.Location = new Point(615, 528);
             lblStatus.Size = new Size(275, 20); lblStatus.Text = "Bereit."; lblStatus.ForeColor = Color.Gray;
 
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(900, 545);
+            ClientSize = new Size(900, 565);
             Controls.Add(grpSource); Controls.Add(btnDirection); Controls.Add(grpTargets);
             Controls.Add(grpTables); Controls.Add(grpMode);
             Controls.Add(btnConnect); Controls.Add(btnMigrate); Controls.Add(lblStatus);
@@ -270,6 +268,7 @@
         private CheckedListBox listTables;
         private Button btnCheckAll, btnCheckNone;
         private CheckBox chkRenameDuplicates;
+        private CheckBox chkCreateDb;
         private GroupBox grpMode;
         private RadioButton rbInsert, rbReplace;
         private Button btnConnect, btnMigrate;

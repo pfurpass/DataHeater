@@ -12,16 +12,20 @@ namespace DataHeater.Helper
         private readonly string _connectionString;
         private readonly string _connectionStringWithoutDb;
         private readonly string _databaseName;
+        private readonly bool _createIfNotExists;
 
-        public MariaDbDatabase(string connectionString, string connectionStringWithoutDb, string databaseName)
+        public MariaDbDatabase(string connectionString, string connectionStringWithoutDb,
+            string databaseName, bool createIfNotExists)
         {
             _connectionString = connectionString;
             _connectionStringWithoutDb = connectionStringWithoutDb;
             _databaseName = databaseName;
+            _createIfNotExists = createIfNotExists;
         }
 
         private async Task EnsureDatabaseExistsAsync()
         {
+            if (!_createIfNotExists) return;
             using var conn = new MySqlConnection(_connectionStringWithoutDb);
             await conn.OpenAsync();
             using var cmd = new MySqlCommand(
