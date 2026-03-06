@@ -5,6 +5,8 @@ It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incomin
 
 ---
 
+![overlay](./github/img/overlay.png)
+
 ## ✨ Features
 
 ### 🆕 Multi‑Source & Multi‑Target Migration
