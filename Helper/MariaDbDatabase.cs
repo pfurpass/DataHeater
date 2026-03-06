@@ -45,14 +45,31 @@ namespace DataHeater.Helper
             }
 
             using var cmd = new MySqlCommand($"SELECT * FROM `{tableName}`", conn);
-            using var adapter = new MySqlDataAdapter(cmd);
+            using var reader = await cmd.ExecuteReaderAsync();
             var table = new DataTable();
-            adapter.Fill(table);
 
-            foreach (DataColumn col in table.Columns)
-                if (columnTypes.ContainsKey(col.ColumnName))
-                    col.ExtendedProperties["MariaDbType"] = columnTypes[col.ColumnName];
+            for (int i = 0; i < reader.FieldCount; i++)
+            {
+                string name = reader.GetName(i);
+                var col = new DataColumn(name, typeof(string));
+                if (columnTypes.ContainsKey(name))
+                    col.ExtendedProperties["MariaDbType"] = columnTypes[name];
+                table.Columns.Add(col);
+            }
 
+            while (await reader.ReadAsync())
+            {
+                var row = table.NewRow();
+                for (int i = 0; i < reader.FieldCount; i++)
+                {
+                    if (reader.IsDBNull(i)) { row[i] = DBNull.Value; continue; }
+                    string val = reader.GetValue(i)?.ToString();
+                    row[i] = string.IsNullOrWhiteSpace(val) ||
+                              val.Equals("null", StringComparison.OrdinalIgnoreCase)
+                        ? DBNull.Value : (object)val;
+                }
+                table.Rows.Add(row);
+            }
             return table;
         }
 
@@ -63,14 +80,12 @@ namespace DataHeater.Helper
             var columns = new List<string>();
             foreach (DataColumn col in schema.Columns)
             {
-                string sourceType =
-                    col.ExtendedProperties.Contains("SqliteType") ? col.ExtendedProperties["SqliteType"].ToString().ToUpper() :
-                    col.ExtendedProperties.Contains("PostgresType") ? col.ExtendedProperties["PostgresType"].ToString().ToUpper() :
-                    null;
-                string mariaType = MapToMariaDb(col.DataType, sourceType);
-                columns.Add($"`{col.ColumnName}` {mariaType}");
+                UniversalType utype = TypeMapper.FromExtendedProperties(col);
+                string mariaType = TypeMapper.ToMariaDb(utype);
+                columns.Add($"`{col.ColumnName.Trim()}` {mariaType}");
             }
-            string sql = $"CREATE TABLE IF NOT EXISTS `{tableName}` ({string.Join(",", columns)})";
+            string sql = $"CREATE TABLE IF NOT EXISTS `{tableName.Trim()}` ({string.Join(", ", columns)})";
+            System.Diagnostics.Debug.WriteLine(sql);
             using var cmd = new MySqlCommand(sql, conn);
             await cmd.ExecuteNonQueryAsync();
         }
@@ -89,44 +104,27 @@ namespace DataHeater.Helper
             await conn.OpenAsync();
             foreach (DataRow row in data.Rows)
             {
-                var cols = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"`{c.ColumnName}`"));
-                var vals = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
-                string sql = $"INSERT INTO `{tableName}` ({cols}) VALUES ({vals})";
+                var cols = string.Join(", ", data.Columns.Cast<DataColumn>()
+                    .Select(c => $"`{c.ColumnName.Trim()}`"));
+                var vals = string.Join(", ", data.Columns.Cast<DataColumn>()
+                    .Select(c => $"@p_{c.ColumnName.Trim()}"));
+                string sql = $"INSERT INTO `{tableName.Trim()}` ({cols}) VALUES ({vals})";
                 using var cmd = new MySqlCommand(sql, conn);
                 foreach (DataColumn col in data.Columns)
-                    cmd.Parameters.AddWithValue($"@{col.ColumnName}",
-                        row[col] == DBNull.Value ? DBNull.Value : row[col]);
+                {
+                    string safe = DbConverter.ToSafeString(row[col]);
+                    if (safe == null)
+                    {
+                        cmd.Parameters.AddWithValue($"@p_{col.ColumnName.Trim()}", DBNull.Value);
+                        continue;
+                    }
+                    UniversalType utype = TypeMapper.FromExtendedProperties(col);
+                    string converted = DbConverter.ConvertToString(safe, utype);
+                    cmd.Parameters.AddWithValue($"@p_{col.ColumnName.Trim()}",
+                        converted != null ? (object)converted : DBNull.Value);
+                }
                 await cmd.ExecuteNonQueryAsync();
             }
-        }
-
-        private string MapToMariaDb(Type type, string sourceType = null)
-        {
-            if (sourceType != null)
-            {
-                if (sourceType == "DATE") return "DATE";
-                if (sourceType.Contains("DATETIME") || sourceType.Contains("TIMESTAMP")) return "DATETIME";
-                if (sourceType.Contains("TIME")) return "TIME";
-                if (sourceType.Contains("TINYINT(1)") || sourceType.Contains("BOOL")) return "BOOLEAN";
-                if (sourceType.Contains("INT4") || sourceType.Contains("INT8")) return "BIGINT";
-                if (sourceType.Contains("INT")) return "BIGINT";
-                if (sourceType.Contains("FLOAT8") || sourceType.Contains("FLOAT4")
-                                                   || sourceType.Contains("DOUBLE")
-                                                   || sourceType.Contains("FLOAT")) return "DOUBLE";
-                if (sourceType.Contains("NUMERIC") || sourceType.Contains("DECIMAL")) return "DECIMAL(18,2)";
-                if (sourceType.Contains("BYTEA") || sourceType.Contains("BLOB")) return "LONGBLOB";
-                if (sourceType.Contains("TEXT")) return "TEXT";
-                if (sourceType.StartsWith("VARCHAR") || sourceType.StartsWith("CHAR")) return sourceType;
-                if (!string.IsNullOrWhiteSpace(sourceType)) return sourceType;
-            }
-
-            if (type == typeof(long) || type == typeof(int)) return "BIGINT";
-            if (type == typeof(double) || type == typeof(float)) return "DOUBLE";
-            if (type == typeof(decimal)) return "DECIMAL(18,2)";
-            if (type == typeof(bool)) return "BOOLEAN";
-            if (type == typeof(DateTime)) return "DATETIME";
-            if (type == typeof(byte[])) return "LONGBLOB";
-            return "TEXT";
         }
     }
 }

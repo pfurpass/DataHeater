@@ -22,8 +22,8 @@ namespace DataHeater.Helper
             var tables = new List<string>();
             using var conn = new NpgsqlConnection(_connectionString);
             await conn.OpenAsync();
-            string sql = "SELECT tablename FROM pg_tables WHERE schemaname = 'public';";
-            using var cmd = new NpgsqlCommand(sql, conn);
+            using var cmd = new NpgsqlCommand(
+                "SELECT tablename FROM pg_tables WHERE schemaname = 'public';", conn);
             using var reader = await cmd.ExecuteReaderAsync();
             while (await reader.ReadAsync())
                 tables.Add(reader.GetString(0));
@@ -36,9 +36,9 @@ namespace DataHeater.Helper
             await conn.OpenAsync();
 
             var columnTypes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-            string schemaSql = "SELECT column_name, udt_name FROM information_schema.columns " +
-                               "WHERE table_schema='public' AND table_name=@t ORDER BY ordinal_position";
-            using (var schemaCmd = new NpgsqlCommand(schemaSql, conn))
+            using (var schemaCmd = new NpgsqlCommand(
+                "SELECT column_name, udt_name FROM information_schema.columns " +
+                "WHERE table_schema='public' AND table_name=@t ORDER BY ordinal_position", conn))
             {
                 schemaCmd.Parameters.AddWithValue("@t", tableName);
                 using var schemaReader = await schemaCmd.ExecuteReaderAsync();
@@ -53,16 +53,23 @@ namespace DataHeater.Helper
             for (int i = 0; i < reader.FieldCount; i++)
             {
                 string name = reader.GetName(i);
-                var col = table.Columns.Add(name, typeof(string));
+                var col = new DataColumn(name, typeof(string));
                 if (columnTypes.ContainsKey(name))
                     col.ExtendedProperties["PostgresType"] = columnTypes[name];
+                table.Columns.Add(col);
             }
 
             while (await reader.ReadAsync())
             {
                 var row = table.NewRow();
                 for (int i = 0; i < reader.FieldCount; i++)
-                    row[i] = reader.IsDBNull(i) ? DBNull.Value : reader.GetValue(i).ToString();
+                {
+                    if (reader.IsDBNull(i)) { row[i] = DBNull.Value; continue; }
+                    string val = reader.GetValue(i)?.ToString();
+                    row[i] = string.IsNullOrWhiteSpace(val) ||
+                              val.Equals("null", StringComparison.OrdinalIgnoreCase)
+                        ? DBNull.Value : (object)val;
+                }
                 table.Rows.Add(row);
             }
             return table;
@@ -75,14 +82,12 @@ namespace DataHeater.Helper
             var columns = new List<string>();
             foreach (DataColumn col in schema.Columns)
             {
-                string sourceType =
-                    col.ExtendedProperties.Contains("SqliteType") ? col.ExtendedProperties["SqliteType"].ToString().ToUpper() :
-                    col.ExtendedProperties.Contains("MariaDbType") ? col.ExtendedProperties["MariaDbType"].ToString().ToUpper() :
-                    null;
-                string pgType = MapToPostgres(col.DataType, sourceType);
+                UniversalType utype = TypeMapper.FromExtendedProperties(col);
+                string pgType = TypeMapper.ToPostgres(utype);
                 columns.Add($"\"{col.ColumnName}\" {pgType}");
             }
-            string sql = $"CREATE TABLE IF NOT EXISTS \"{tableName}\" ({string.Join(",", columns)})";
+            string sql = $"CREATE TABLE IF NOT EXISTS \"{tableName}\" ({string.Join(", ", columns)})";
+            System.Diagnostics.Debug.WriteLine(sql);
             using var cmd = new NpgsqlCommand(sql, conn);
             await cmd.ExecuteNonQueryAsync();
         }
@@ -101,81 +106,50 @@ namespace DataHeater.Helper
             await conn.OpenAsync();
             foreach (DataRow row in data.Rows)
             {
-                var cols = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"\"{c.ColumnName}\""));
-                var vals = string.Join(",", data.Columns.Cast<DataColumn>().Select(c => $"@{c.ColumnName}"));
+                var cols = string.Join(", ", data.Columns.Cast<DataColumn>()
+                    .Select(c => $"\"{c.ColumnName}\""));
+                var vals = string.Join(", ", data.Columns.Cast<DataColumn>()
+                    .Select(c => $"@p_{c.ColumnName}"));
                 string sql = $"INSERT INTO \"{tableName}\" ({cols}) VALUES ({vals})";
                 using var cmd = new NpgsqlCommand(sql, conn);
+
                 foreach (DataColumn col in data.Columns)
                 {
-                    var val = row[col];
-                    if (val == DBNull.Value || val == null)
+                    string safe = DbConverter.ToSafeString(row[col]);
+                    if (safe == null)
                     {
-                        cmd.Parameters.AddWithValue($"@{col.ColumnName}", DBNull.Value);
+                        cmd.Parameters.AddWithValue($"@p_{col.ColumnName}", DBNull.Value);
                         continue;
                     }
 
-                    string sourceType =
-                        col.ExtendedProperties.Contains("SqliteType") ? col.ExtendedProperties["SqliteType"].ToString().ToUpper() :
-                        col.ExtendedProperties.Contains("MariaDbType") ? col.ExtendedProperties["MariaDbType"].ToString().ToUpper() :
-                        null;
+                    UniversalType utype = TypeMapper.FromExtendedProperties(col);
+                    object converted = DbConverter.ConvertForPostgres(safe, utype);
 
-                    if (sourceType != null && sourceType == "DATE")
+                    switch (utype)
                     {
-                        if (DateTime.TryParse(val.ToString(), out DateTime dt))
-                        {
-                            var p = new NpgsqlParameter($"@{col.ColumnName}", NpgsqlDbType.Date);
-                            p.Value = DateOnly.FromDateTime(dt);
-                            cmd.Parameters.Add(p);
-                        }
-                        else cmd.Parameters.AddWithValue($"@{col.ColumnName}", DBNull.Value);
-                        continue;
+                        case UniversalType.Date:
+                            var pd = new NpgsqlParameter($"@p_{col.ColumnName}", NpgsqlDbType.Date);
+                            pd.Value = converted is DBNull ? DBNull.Value : converted;
+                            cmd.Parameters.Add(pd);
+                            break;
+                        case UniversalType.DateTime:
+                            var pdt = new NpgsqlParameter($"@p_{col.ColumnName}", NpgsqlDbType.Timestamp);
+                            pdt.Value = converted is DBNull ? DBNull.Value : converted;
+                            cmd.Parameters.Add(pdt);
+                            break;
+                        case UniversalType.Time:
+                            var pt = new NpgsqlParameter($"@p_{col.ColumnName}", NpgsqlDbType.Time);
+                            pt.Value = converted is DBNull ? DBNull.Value : converted;
+                            cmd.Parameters.Add(pt);
+                            break;
+                        default:
+                            cmd.Parameters.AddWithValue($"@p_{col.ColumnName}",
+                                converted is DBNull ? DBNull.Value : converted);
+                            break;
                     }
-
-                    if (sourceType != null && (sourceType.Contains("DATETIME") || sourceType.Contains("TIMESTAMP")))
-                    {
-                        if (DateTime.TryParse(val.ToString(), out DateTime dt))
-                        {
-                            var p = new NpgsqlParameter($"@{col.ColumnName}", NpgsqlDbType.Timestamp);
-                            p.Value = dt;
-                            cmd.Parameters.Add(p);
-                        }
-                        else cmd.Parameters.AddWithValue($"@{col.ColumnName}", DBNull.Value);
-                        continue;
-                    }
-
-                    cmd.Parameters.AddWithValue($"@{col.ColumnName}", val);
                 }
                 await cmd.ExecuteNonQueryAsync();
             }
-        }
-
-        private string MapToPostgres(Type type, string sourceType = null)
-        {
-            if (sourceType != null)
-            {
-                if (sourceType == "DATE") return "DATE";
-                if (sourceType.Contains("DATETIME") || sourceType.Contains("TIMESTAMP")) return "TIMESTAMP";
-                if (sourceType.Contains("TIME")) return "TIME";
-                if (sourceType.Contains("TINYINT(1)") || sourceType.Contains("BOOL")) return "BOOLEAN";
-                if (sourceType.Contains("TINYINT") || sourceType.Contains("SMALLINT")) return "SMALLINT";
-                if (sourceType.Contains("MEDIUMINT") || sourceType.Contains("BIGINT")
-                                                     || sourceType.Contains("INT")) return "BIGINT";
-                if (sourceType.Contains("DOUBLE") || sourceType.Contains("FLOAT")) return "DOUBLE PRECISION";
-                if (sourceType.Contains("DECIMAL") || sourceType.Contains("NUMERIC")) return "NUMERIC";
-                if (sourceType.Contains("BYTEA") || sourceType.Contains("BLOB")) return "BYTEA";
-                if (sourceType.Contains("TEXT")) return "TEXT";
-                if (sourceType.StartsWith("VARCHAR")) return sourceType;
-                if (sourceType.StartsWith("CHAR")) return sourceType;
-                if (!string.IsNullOrWhiteSpace(sourceType)) return sourceType;
-            }
-
-            if (type == typeof(long) || type == typeof(int)) return "BIGINT";
-            if (type == typeof(double) || type == typeof(float)) return "DOUBLE PRECISION";
-            if (type == typeof(decimal)) return "NUMERIC";
-            if (type == typeof(bool)) return "BOOLEAN";
-            if (type == typeof(DateTime)) return "TIMESTAMP";
-            if (type == typeof(byte[])) return "BYTEA";
-            return "TEXT";
         }
     }
 }
