@@ -3,9 +3,11 @@
 **DataHeater** is a powerful Windows desktop tool for migrating data between multiple database systems — quickly, safely, and without installation.  
 It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incoming)** — in **both directions**.
 
----
+<!-- ![icon](./github/img/icon_256x256.ico) -->
 
-![overlay](./github/img/overlay.png)
+![overlay](./github/img/overlay-2.png)
+
+---
 
 ## ✨ Features
 
