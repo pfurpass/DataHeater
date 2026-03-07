@@ -1,9 +1,10 @@
 using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
+using System.Threading.Tasks;
 using System.Windows.Forms;
 using DataHeater.Helper;
-using System.Threading.Tasks;
 
 namespace DataHeater
 {
@@ -11,15 +12,15 @@ namespace DataHeater
     {
         private readonly List<DbTarget> _sources = new();
         private readonly List<DbTarget> _targets = new();
-        private int _editingSourceIndex = -1;
-        private int _editingTargetIndex = -1;
+        private int _editSrcIdx = -1;
+        private int _editTgtIdx = -1;
 
         private class TableEntry
         {
             public string TableName { get; set; }
             public int SourceIndex { get; set; }
             private readonly List<DbTarget> _src;
-            public TableEntry(List<DbTarget> src) { _src = src; }
+            public TableEntry(List<DbTarget> src) => _src = src;
             public override string ToString() => $"[{TableName}]  ←  {_src[SourceIndex]}";
         }
 
@@ -27,244 +28,222 @@ namespace DataHeater
         {
             InitializeComponent();
 
+            // Explizite Defaults (nicht vom Designer abhängig)
+            pnlSrcSqlite.Visible = true;
+            pnlSrcDb.Visible = false;
+            pnlTgtSqlite.Visible = false;
+            pnlTgtDb.Visible = true;
+            txtTgtPort.Text = "3306";
+
             listTables.KeyDown += (s, e) =>
             {
-                if (e.KeyCode == Keys.Space)
-                {
-                    bool allChecked = listTables.SelectedIndices.Cast<int>()
-                        .All(i => listTables.GetItemChecked(i));
-                    foreach (int i in listTables.SelectedIndices)
-                        listTables.SetItemChecked(i, !allChecked);
-                    e.Handled = true;
-                }
+                if (e.KeyCode != Keys.Space) return;
+                bool allChecked = listTables.SelectedIndices.Cast<int>()
+                    .All(i => listTables.GetItemChecked(i));
+                foreach (int i in listTables.SelectedIndices)
+                    listTables.SetItemChecked(i, !allChecked);
+                e.Handled = true;
             };
         }
 
+        // ── Typ-Auswahl ────────────────────────────────────────────────────
         private void cmbSrcType_SelectedIndexChanged(object sender, EventArgs e)
         {
-            bool isSqlite = cmbSrcType.SelectedItem.ToString() == "SQLite";
-            pnlSrcSqlite.Visible = isSqlite;
-            pnlSrcDb.Visible = !isSqlite;
-            if (!isSqlite)
-                txtSrcPort.Text = cmbSrcType.SelectedItem.ToString() == "PostgreSQL" ? "5432" : "3306";
+            string t = cmbSrcType.SelectedItem?.ToString() ?? "";
+            pnlSrcSqlite.Visible = t == "SQLite";
+            pnlSrcDb.Visible = t != "SQLite";
+            if (t != "SQLite") txtSrcPort.Text = DefaultPort(t);
         }
 
         private void cmbTgtType_SelectedIndexChanged(object sender, EventArgs e)
         {
-            bool isSqlite = cmbTgtType.SelectedItem.ToString() == "SQLite";
-            pnlTgtSqlite.Visible = isSqlite;
-            pnlTgtDb.Visible = !isSqlite;
-            if (!isSqlite)
-                txtTgtPort.Text = cmbTgtType.SelectedItem.ToString() == "PostgreSQL" ? "5432" : "3306";
+            string t = cmbTgtType.SelectedItem?.ToString() ?? "";
+            pnlTgtSqlite.Visible = t == "SQLite";
+            pnlTgtDb.Visible = t != "SQLite";
+            if (t != "SQLite") txtTgtPort.Text = DefaultPort(t);
         }
 
+        private static string DefaultPort(string type) => type switch
+        {
+            "PostgreSQL" => "5432",
+            "Oracle" => "1521",
+            _ => "3306"
+        };
+
+        // ── Browse ─────────────────────────────────────────────────────────
         private void btnSrcBrowse_Click(object sender, EventArgs e)
         {
-            using var dlg = new OpenFileDialog();
-            dlg.Filter = "SQLite Datenbank (*.db;*.sqlite)|*.db;*.sqlite|Alle Dateien (*.*)|*.*";
-            if (dlg.ShowDialog() == DialogResult.OK)
-                txtSrcPath.Text = dlg.FileName;
+            using var d = new OpenFileDialog
+            { Filter = "SQLite (*.db;*.sqlite)|*.db;*.sqlite|Alle (*.*)|*.*" };
+            if (d.ShowDialog() == DialogResult.OK) txtSrcPath.Text = d.FileName;
         }
 
         private void btnTgtBrowse_Click(object sender, EventArgs e)
         {
-            using var dlg = new OpenFileDialog();
-            dlg.Filter = "SQLite Datenbank (*.db;*.sqlite)|*.db;*.sqlite|Alle Dateien (*.*)|*.*";
-            if (dlg.ShowDialog() == DialogResult.OK)
-                txtTgtPath.Text = dlg.FileName;
+            using var d = new OpenFileDialog
+            { Filter = "SQLite (*.db;*.sqlite)|*.db;*.sqlite|Alle (*.*)|*.*" };
+            if (d.ShowDialog() == DialogResult.OK) txtTgtPath.Text = d.FileName;
         }
 
+        // ── Quelle ─────────────────────────────────────────────────────────
         private void btnAddSource_Click(object sender, EventArgs e)
         {
-            var target = BuildTargetFromPanel(cmbSrcType, txtSrcPath,
-                txtSrcHost, txtSrcPort, txtSrcDatabase, txtSrcUsername, txtSrcPassword, isSource: true);
-            if (target == null) return;
+            var t = BuildTarget(cmbSrcType, txtSrcPath, txtSrcHost, txtSrcPort,
+                                txtSrcDatabase, txtSrcUsername, txtSrcPassword, isSource: true);
+            if (t == null) return;
 
-            if (_editingSourceIndex >= 0)
+            if (_editSrcIdx >= 0)
             {
-                bool wasChecked = chkSources.GetItemChecked(_editingSourceIndex);
-                _sources[_editingSourceIndex] = target;
-                chkSources.Items[_editingSourceIndex] = target;
-                chkSources.SetItemChecked(_editingSourceIndex, wasChecked);
-                _editingSourceIndex = -1;
-                btnAddSource.Text = "➕ Hinzufügen";
-                btnEditSource.Text = "✏️ Bearbeiten";
-                btnEditSource.Click -= btnCancelEditSource_Click;
-                btnEditSource.Click += btnEditSource_Click;
+                bool was = chkSources.GetItemChecked(_editSrcIdx);
+                _sources[_editSrcIdx] = t;
+                chkSources.Items[_editSrcIdx] = t;
+                chkSources.SetItemChecked(_editSrcIdx, was);
+                EndEditSource();
+                SetStatus("✏️ Quelle aktualisiert – bitte neu verbinden.", Color.DarkOrange);
                 listTables.Items.Clear();
-                lblStatus.ForeColor = Color.DarkOrange;
-                lblStatus.Text = "✏️ Eintrag aktualisiert – bitte neu verbinden.";
             }
             else
             {
-                _sources.Add(target);
-                int idx = chkSources.Items.Add(target);
-                chkSources.SetItemChecked(idx, true);
+                _sources.Add(t);
+                chkSources.SetItemChecked(chkSources.Items.Add(t), true);
             }
         }
 
         private void btnRemoveSource_Click(object sender, EventArgs e)
         {
             if (chkSources.SelectedIndex < 0) return;
-            int idx = chkSources.SelectedIndex;
-            _sources.RemoveAt(idx);
-            chkSources.Items.RemoveAt(idx);
+            int i = chkSources.SelectedIndex;
+            _sources.RemoveAt(i); chkSources.Items.RemoveAt(i);
         }
 
         private void btnEditSource_Click(object sender, EventArgs e)
         {
             if (chkSources.SelectedIndex < 0)
-            {
-                MessageBox.Show("Bitte einen Eintrag auswählen!", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            { MessageBox.Show("Bitte Eintrag auswählen!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             int idx = chkSources.SelectedIndex;
-            LoadIntoPanel(_sources[idx], cmbSrcType, txtSrcPath,
-                txtSrcHost, txtSrcPort, txtSrcDatabase, txtSrcUsername, txtSrcPassword);
-            _editingSourceIndex = idx;
+            LoadToPanel(_sources[idx], cmbSrcType, txtSrcPath, txtSrcHost, txtSrcPort,
+                        txtSrcDatabase, txtSrcUsername, txtSrcPassword);
+            _editSrcIdx = idx;
             btnAddSource.Text = "💾 Speichern";
             btnEditSource.Text = "❌ Abbrechen";
             btnEditSource.Click -= btnEditSource_Click;
             btnEditSource.Click += btnCancelEditSource_Click;
         }
 
-        private void btnCancelEditSource_Click(object sender, EventArgs e)
+        private void btnCancelEditSource_Click(object sender, EventArgs e) => EndEditSource();
+        private void EndEditSource()
         {
-            _editingSourceIndex = -1;
+            _editSrcIdx = -1;
             btnAddSource.Text = "➕ Hinzufügen";
             btnEditSource.Text = "✏️ Bearbeiten";
             btnEditSource.Click -= btnCancelEditSource_Click;
             btnEditSource.Click += btnEditSource_Click;
         }
 
+        // ── Ziel ───────────────────────────────────────────────────────────
         private void btnAddTarget_Click(object sender, EventArgs e)
         {
-            var target = BuildTargetFromPanel(cmbTgtType, txtTgtPath,
-                txtTgtHost, txtTgtPort, txtTgtDatabase, txtTgtUsername, txtTgtPassword, isSource: false);
-            if (target == null) return;
+            var t = BuildTarget(cmbTgtType, txtTgtPath, txtTgtHost, txtTgtPort,
+                                txtTgtDatabase, txtTgtUsername, txtTgtPassword, isSource: false);
+            if (t == null) return;
 
-            if (_editingTargetIndex >= 0)
+            if (_editTgtIdx >= 0)
             {
-                bool wasChecked = chkTargets.GetItemChecked(_editingTargetIndex);
-                _targets[_editingTargetIndex] = target;
-                chkTargets.Items[_editingTargetIndex] = target;
-                chkTargets.SetItemChecked(_editingTargetIndex, wasChecked);
-                _editingTargetIndex = -1;
-                btnAddTarget.Text = "➕ Hinzufügen";
-                btnEditTarget.Text = "✏️ Bearbeiten";
-                btnEditTarget.Click -= btnCancelEditTarget_Click;
-                btnEditTarget.Click += btnEditTarget_Click;
-                lblStatus.ForeColor = Color.DarkOrange;
-                lblStatus.Text = "✏️ Eintrag aktualisiert – bitte neu verbinden.";
+                bool was = chkTargets.GetItemChecked(_editTgtIdx);
+                _targets[_editTgtIdx] = t;
+                chkTargets.Items[_editTgtIdx] = t;
+                chkTargets.SetItemChecked(_editTgtIdx, was);
+                EndEditTarget();
+                SetStatus("✏️ Ziel aktualisiert – bitte neu verbinden.", Color.DarkOrange);
             }
             else
             {
-                _targets.Add(target);
-                int idx = chkTargets.Items.Add(target);
-                chkTargets.SetItemChecked(idx, true);
+                _targets.Add(t);
+                chkTargets.SetItemChecked(chkTargets.Items.Add(t), true);
             }
         }
 
         private void btnRemoveTarget_Click(object sender, EventArgs e)
         {
             if (chkTargets.SelectedIndex < 0) return;
-            int idx = chkTargets.SelectedIndex;
-            _targets.RemoveAt(idx);
-            chkTargets.Items.RemoveAt(idx);
+            int i = chkTargets.SelectedIndex;
+            _targets.RemoveAt(i); chkTargets.Items.RemoveAt(i);
         }
 
         private void btnEditTarget_Click(object sender, EventArgs e)
         {
             if (chkTargets.SelectedIndex < 0)
-            {
-                MessageBox.Show("Bitte einen Eintrag auswählen!", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            { MessageBox.Show("Bitte Eintrag auswählen!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             int idx = chkTargets.SelectedIndex;
-            LoadIntoPanel(_targets[idx], cmbTgtType, txtTgtPath,
-                txtTgtHost, txtTgtPort, txtTgtDatabase, txtTgtUsername, txtTgtPassword);
-            _editingTargetIndex = idx;
+            LoadToPanel(_targets[idx], cmbTgtType, txtTgtPath, txtTgtHost, txtTgtPort,
+                        txtTgtDatabase, txtTgtUsername, txtTgtPassword);
+            _editTgtIdx = idx;
             btnAddTarget.Text = "💾 Speichern";
             btnEditTarget.Text = "❌ Abbrechen";
             btnEditTarget.Click -= btnEditTarget_Click;
             btnEditTarget.Click += btnCancelEditTarget_Click;
         }
 
-        private void btnCancelEditTarget_Click(object sender, EventArgs e)
+        private void btnCancelEditTarget_Click(object sender, EventArgs e) => EndEditTarget();
+        private void EndEditTarget()
         {
-            _editingTargetIndex = -1;
+            _editTgtIdx = -1;
             btnAddTarget.Text = "➕ Hinzufügen";
             btnEditTarget.Text = "✏️ Bearbeiten";
             btnEditTarget.Click -= btnCancelEditTarget_Click;
             btnEditTarget.Click += btnEditTarget_Click;
         }
 
-        private void LoadIntoPanel(DbTarget t,
-            ComboBox cmbType, TextBox txtPath,
-            TextBox txtHost, TextBox txtPort,
-            TextBox txtDb, TextBox txtUser, TextBox txtPwd)
+        // ── Panel ↔ DbTarget ───────────────────────────────────────────────
+        private static void LoadToPanel(DbTarget t,
+            ComboBox type, TextBox path,
+            TextBox host, TextBox port, TextBox db, TextBox user, TextBox pwd)
         {
-            cmbType.SelectedItem = t.Type switch
+            type.SelectedItem = t.Type switch
             {
                 DbType.PostgreSQL => "PostgreSQL",
+                DbType.Oracle => "Oracle",
                 DbType.MariaDB => "MariaDB",
                 _ => "SQLite"
             };
-
-            if (t.Type == DbType.SQLite)
-                txtPath.Text = t.Database;
-            else
-            {
-                txtHost.Text = t.Host;
-                txtPort.Text = t.Port;
-                txtDb.Text = t.Database;
-                txtUser.Text = t.Username;
-                txtPwd.Text = t.Password;
-            }
+            if (t.Type == DbType.SQLite) { path.Text = t.Database; return; }
+            host.Text = t.Host; port.Text = t.Port;
+            db.Text = t.Database; user.Text = t.Username; pwd.Text = t.Password;
         }
 
-        private DbTarget BuildTargetFromPanel(
+        private DbTarget BuildTarget(
             ComboBox cmbType, TextBox txtPath,
             TextBox txtHost, TextBox txtPort,
             TextBox txtDb, TextBox txtUser, TextBox txtPwd,
             bool isSource)
         {
-            string type = cmbType.SelectedItem.ToString();
+            string type = cmbType.SelectedItem?.ToString() ?? "MariaDB";
 
             if (type == "SQLite")
             {
                 if (isSource)
                 {
                     if (string.IsNullOrWhiteSpace(txtPath.Text))
-                    {
-                        MessageBox.Show("Bitte SQLite Datei auswählen!", "Hinweis",
-                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return null;
-                    }
+                    { MessageBox.Show("Bitte SQLite Datei auswählen!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return null; }
                     return new DbTarget { Type = DbType.SQLite, Database = txtPath.Text };
                 }
-                else
-                {
-                    using var dlg = new SaveFileDialog();
-                    dlg.Filter = "SQLite Datenbank (*.db)|*.db";
-                    dlg.FileName = "export.db";
-                    if (dlg.ShowDialog() != DialogResult.OK) return null;
-                    return new DbTarget { Type = DbType.SQLite, Database = dlg.FileName };
-                }
+                using var d = new SaveFileDialog
+                { Filter = "SQLite (*.db)|*.db", FileName = "export.db" };
+                if (d.ShowDialog() != DialogResult.OK) return null;
+                return new DbTarget { Type = DbType.SQLite, Database = d.FileName };
             }
 
             if (string.IsNullOrWhiteSpace(txtHost.Text) || string.IsNullOrWhiteSpace(txtDb.Text))
-            {
-                MessageBox.Show("Bitte Host und Datenbank eingeben!", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return null;
-            }
+            { MessageBox.Show("Bitte Host und Datenbank eingeben!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return null; }
 
             return new DbTarget
             {
-                Type = type == "PostgreSQL" ? DbType.PostgreSQL : DbType.MariaDB,
+                Type = type switch
+                {
+                    "PostgreSQL" => DbType.PostgreSQL,
+                    "Oracle" => DbType.Oracle,
+                    _ => DbType.MariaDB
+                },
                 Host = txtHost.Text,
                 Port = txtPort.Text,
                 Database = txtDb.Text,
@@ -273,187 +252,176 @@ namespace DataHeater
             };
         }
 
+        // ── Richtung tauschen ──────────────────────────────────────────────
         private void btnDirection_Click(object sender, EventArgs e)
         {
-            var tmpTargets = new List<DbTarget>(_targets);
-            var tmpSources = new List<DbTarget>(_sources);
-
-            _targets.Clear(); chkTargets.Items.Clear();
+            var ts = new List<DbTarget>(_sources);
+            var tt = new List<DbTarget>(_targets);
             _sources.Clear(); chkSources.Items.Clear();
-
-            foreach (var t in tmpSources)
-            {
-                _targets.Add(t);
-                int idx = chkTargets.Items.Add(t);
-                chkTargets.SetItemChecked(idx, true);
-            }
-            foreach (var t in tmpTargets)
-            {
-                _sources.Add(t);
-                int idx = chkSources.Items.Add(t);
-                chkSources.SetItemChecked(idx, true);
-            }
-
+            _targets.Clear(); chkTargets.Items.Clear();
+            foreach (var t in tt) { _sources.Add(t); chkSources.SetItemChecked(chkSources.Items.Add(t), true); }
+            foreach (var t in ts) { _targets.Add(t); chkTargets.SetItemChecked(chkTargets.Items.Add(t), true); }
             listTables.Items.Clear();
-            lblStatus.ForeColor = Color.DarkOrange;
-            lblStatus.Text = "⇄ Getauscht – bitte neu verbinden.";
+            SetStatus("⇄ Getauscht – bitte neu verbinden.", Color.DarkOrange);
         }
 
+        // ── Alle / Keine ───────────────────────────────────────────────────
         private void btnCheckAll_Click(object sender, EventArgs e)
-        {
-            for (int i = 0; i < listTables.Items.Count; i++)
-                listTables.SetItemChecked(i, true);
-        }
+        { for (int i = 0; i < listTables.Items.Count; i++) listTables.SetItemChecked(i, true); }
 
         private void btnCheckNone_Click(object sender, EventArgs e)
-        {
-            for (int i = 0; i < listTables.Items.Count; i++)
-                listTables.SetItemChecked(i, false);
-        }
+        { for (int i = 0; i < listTables.Items.Count; i++) listTables.SetItemChecked(i, false); }
 
-        private ITargetDatabase BuildDb(DbTarget target) => target.Type switch
+        // ── DB-Instanz ─────────────────────────────────────────────────────
+        private ITargetDatabase BuildDb(DbTarget t) => t.Type switch
         {
             DbType.PostgreSQL => new PostgresDatabase(
-                target.ConnectionString,
-                target.ConnectionStringWithoutDb,
-                target.Database,
-                chkCreateDb.Checked),
-            DbType.SQLite => new SqliteDatabase(target.ConnectionString),
+                t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked),
+            DbType.Oracle => new OracleDatabase(
+                t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked),
+            DbType.SQLite => new SqliteDatabase(t.ConnectionString),
             _ => new MariaDbDatabase(
-                target.ConnectionString,
-                target.ConnectionStringWithoutDb,
-                target.Database,
-                chkCreateDb.Checked)
+                t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked)
         };
 
+        // ── Verbinden ──────────────────────────────────────────────────────
         private async void btnConnect_Click(object sender, EventArgs e)
         {
             if (chkSources.CheckedItems.Count == 0)
-            {
-                MessageBox.Show("Bitte mindestens eine Quelle hinzufügen und anhaken!", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
+            { MessageBox.Show("Bitte mindestens eine Quelle anhaken!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             try
             {
-                lblStatus.ForeColor = Color.Gray;
-                lblStatus.Text = "Verbinde...";
+                SetStatus("Verbinde…", Color.Gray);
                 listTables.Items.Clear();
-
                 for (int i = 0; i < chkSources.Items.Count; i++)
                 {
                     if (!chkSources.GetItemChecked(i)) continue;
-                    var sourceDb = BuildDb(_sources[i]);
-                    var tables = await sourceDb.GetTablesAsync();
+                    var tables = await BuildDb(_sources[i]).GetTablesAsync();
                     foreach (var t in tables)
                     {
-                        int idx = listTables.Items.Add(new TableEntry(_sources)
-                        {
-                            TableName = t,
-                            SourceIndex = i
-                        });
+                        int idx = listTables.Items.Add(
+                            new TableEntry(_sources) { TableName = t, SourceIndex = i });
                         listTables.SetItemChecked(idx, true);
                     }
                 }
-
-                lblStatus.ForeColor = Color.Green;
-                lblStatus.Text = $"✅ Verbunden! {listTables.Items.Count} Tabellen gefunden.";
+                SetStatus($"✅ Verbunden! {listTables.Items.Count} Tabellen.", Color.Green);
             }
             catch (Exception ex)
             {
-                lblStatus.ForeColor = Color.Red;
-                lblStatus.Text = "❌ Fehler: " + ex.Message;
+                SetStatus("❌ " + ex.Message, Color.Red);
                 MessageBox.Show(ex.Message, "Verbindungsfehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
+        // ── Migrieren ──────────────────────────────────────────────────────
         private async void btnMigrate_Click(object sender, EventArgs e)
         {
             if (listTables.CheckedItems.Count == 0)
-            {
-                MessageBox.Show("Bitte mindestens eine Tabelle anhaken!", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            { MessageBox.Show("Bitte mindestens eine Tabelle anhaken!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
             if (chkTargets.CheckedItems.Count == 0)
-            {
-                MessageBox.Show("Bitte mindestens ein Ziel anhaken!", "Hinweis",
-                    MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
+            { MessageBox.Show("Bitte mindestens ein Ziel anhaken!", "Hinweis", MessageBoxButtons.OK, MessageBoxIcon.Warning); return; }
 
-            var checkedEntries = listTables.CheckedItems.Cast<TableEntry>().ToList();
-            var duplicates = checkedEntries
-                .GroupBy(e => e.TableName)
-                .Where(g => g.Count() > 1)
-                .Select(g => g.Key)
-                .ToList();
+            var entries = listTables.CheckedItems.Cast<TableEntry>().ToList();
+            var duplicates = entries.GroupBy(x => x.TableName)
+                .Where(g => g.Count() > 1).Select(g => g.Key).ToList();
 
             if (duplicates.Count > 0 && !chkRenameDuplicates.Checked)
             {
                 MessageBox.Show(
-                    $"Folgende Tabellennamen kommen in mehreren Quellen vor:\n\n" +
+                    "Folgende Tabellennamen sind mehrfach vorhanden:\n\n" +
                     string.Join("\n", duplicates) +
-                    "\n\nBitte 'Duplikate umbenennen' aktivieren oder die doppelten Tabellen abhaken.",
-                    "Duplikate gefunden!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    "\n\nBitte 'Duplikate umbenennen' aktivieren oder doppelte Einträge abhaken.",
+                    "Duplikate!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
 
             try
             {
-                btnMigrate.Enabled = false;
-                btnConnect.Enabled = false;
-                int total = checkedEntries.Count;
-                int count = 0;
+                btnMigrate.Enabled = btnConnect.Enabled = false;
+                int total = entries.Count, n = 0;
 
-                foreach (var entry in checkedEntries)
+                foreach (var entry in entries)
                 {
-                    count++;
-                    string targetName = entry.TableName;
+                    n++;
+                    string tgtName = entry.TableName;
                     if (chkRenameDuplicates.Checked && duplicates.Contains(entry.TableName))
                     {
-                        string suffix = _sources[entry.SourceIndex].Database
-                            .Split('/', '\\')[^1]
-                            .Replace(".db", "").Replace(".sqlite", "");
-                        targetName = $"{entry.TableName}_from_{suffix}";
+                        string suffix = System.IO.Path.GetFileNameWithoutExtension(
+                            _sources[entry.SourceIndex].Database ?? "src");
+                        tgtName = $"{entry.TableName}_from_{suffix}";
                     }
 
-                    var sourceDb = BuildDb(_sources[entry.SourceIndex]);
-                    var data = await sourceDb.GetTableDataAsync(entry.TableName);
+                    var data = await BuildDb(_sources[entry.SourceIndex])
+                        .GetTableDataAsync(entry.TableName);
 
                     for (int i = 0; i < chkTargets.Items.Count; i++)
                     {
                         if (!chkTargets.GetItemChecked(i)) continue;
-                        var target = _targets[i];
-                        var db = BuildDb(target);
-
-                        lblStatus.ForeColor = Color.DarkBlue;
-                        lblStatus.Text = $"⏳ '{entry.TableName}' → '{targetName}' @ {target} ({count}/{total})";
+                        var db = BuildDb(_targets[i]);
+                        SetStatus($"⏳ '{entry.TableName}' → '{tgtName}' @ {_targets[i]} ({n}/{total})",
+                            Color.DarkBlue);
                         Application.DoEvents();
-
-                        await db.CreateTableIfNotExistsAsync(data, targetName);
-                        if (rbReplace.Checked) await db.TruncateTableAsync(targetName);
-                        await db.InsertDataAsync(targetName, data);
+                        await db.CreateTableIfNotExistsAsync(data, tgtName);
+                        if (rbReplace.Checked) await db.TruncateTableAsync(tgtName);
+                        await db.InsertDataAsync(tgtName, data);
                     }
                 }
 
-                lblStatus.ForeColor = Color.Green;
-                lblStatus.Text = $"✅ Migration abgeschlossen! {count} Tabelle(n) migriert.";
-                MessageBox.Show("Migration abgeschlossen!", "Fertig",
-                    MessageBoxButtons.OK, MessageBoxIcon.Information);
+                SetStatus($"✅ Migration abgeschlossen! {n} Tabelle(n). Prüfe NULLs…", Color.Green);
+                Application.DoEvents();
+
+                // NULL-Prüfung
+                var nullReport = new System.Text.StringBuilder();
+                foreach (var entry2 in entries)
+                {
+                    string tName = entry2.TableName;
+                    if (chkRenameDuplicates.Checked && duplicates.Contains(entry2.TableName))
+                    {
+                        string sfx = System.IO.Path.GetFileNameWithoutExtension(
+                            _sources[entry2.SourceIndex].Database ?? "src");
+                        tName = $"{entry2.TableName}_from_{sfx}";
+                    }
+                    for (int ti = 0; ti < chkTargets.Items.Count; ti++)
+                    {
+                        if (!chkTargets.GetItemChecked(ti)) continue;
+                        try
+                        {
+                            var td = await BuildDb(_targets[ti]).GetTableDataAsync(tName);
+                            if (td.Rows.Count == 0)
+                            { nullReport.AppendLine($"⚠️  {tName}: LEER (0 Zeilen)!"); continue; }
+                            foreach (System.Data.DataColumn col in td.Columns)
+                            {
+                                bool allNull = td.Rows.Cast<System.Data.DataRow>()
+                                    .All(r => r[col] == System.DBNull.Value || r[col]?.ToString() == "");
+                                if (allNull)
+                                    nullReport.AppendLine($"⚠️  {tName}.{col.ColumnName}: komplett NULL");
+                            }
+                        }
+                        catch { }
+                    }
+                }
+
+                string report = nullReport.Length > 0
+                    ? "⚠️ Folgende Spalten sind komplett NULL:" + nullReport
+                    : "✅ Datenkontrolle OK – keine komplett-NULL Spalten.";
+
+                SetStatus($"✅ Migration abgeschlossen! {n} Tabelle(n).", Color.Green);
+                MessageBox.Show("Migration abgeschlossen!" + report, "Fertig",
+                    MessageBoxButtons.OK,
+                    nullReport.Length > 0 ? MessageBoxIcon.Warning : MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                lblStatus.ForeColor = Color.Red;
-                lblStatus.Text = "❌ Fehler: " + ex.Message;
-                MessageBox.Show(ex.Message, "Migrationsfehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SetStatus("❌ " + ex.Message, Color.Red);
+                MessageBox.Show(ex.Message, "Fehler", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                btnMigrate.Enabled = true;
-                btnConnect.Enabled = true;
+                btnMigrate.Enabled = btnConnect.Enabled = true;
             }
         }
+
+        private void SetStatus(string msg, Color color)
+        { lblStatus.ForeColor = color; lblStatus.Text = msg; }
     }
 }

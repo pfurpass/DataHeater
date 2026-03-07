@@ -1,6 +1,6 @@
 ﻿namespace DataHeater.Helper
 {
-    public enum DbType { SQLite, MariaDB, PostgreSQL }
+    public enum DbType { SQLite, MariaDB, PostgreSQL, Oracle }
 
     public class DbTarget
     {
@@ -15,13 +15,14 @@
         {
             DbType.SQLite => $"Data Source={Database};",
             DbType.PostgreSQL => $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};",
+            DbType.Oracle => $"Data Source={Host}:{Port}/{Database};User Id={Username};Password={Password};",
             _ => $"Server={Host};Port={Port};Database={Database};Uid={Username};Pwd={Password};"
         };
 
-        // Verbindung ohne Datenbankname — zum Erstellen der DB
         public string ConnectionStringWithoutDb => Type switch
         {
             DbType.PostgreSQL => $"Host={Host};Port={Port};Database=postgres;Username={Username};Password={Password};",
+            DbType.Oracle => $"Data Source={Host}:{Port}/XE;User Id={Username};Password={Password};",
             _ => $"Server={Host};Port={Port};Uid={Username};Pwd={Password};"
         };
 
@@ -29,6 +30,7 @@
         {
             DbType.SQLite => $"[SQLite] {Database}",
             DbType.PostgreSQL => $"[PostgreSQL] {Host}:{Port}/{Database}",
+            DbType.Oracle => $"[Oracle] {Host}:{Port}/{Database}",
             _ => $"[MariaDB] {Host}:{Port}/{Database}"
         };
     }

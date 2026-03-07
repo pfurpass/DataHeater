@@ -3,157 +3,204 @@ using System.Globalization;
 
 namespace DataHeater.Helper
 {
+    /// <summary>
+    /// Regel: Nur echtes DBNull/null aus der Quelle → NULL im Ziel.
+    /// Werte die nicht geparst werden können → Rohwert als String durchreichen.
+    /// Niemals einen vorhandenen Wert durch NULL ersetzen.
+    /// </summary>
     internal static class DbConverter
     {
+        // Gibt null zurück NUR wenn Quelle wirklich null/DBNull ist
         public static string ToSafeString(object val)
         {
             if (val == null || val == DBNull.Value) return null;
-            string s = val.ToString();
-            if (string.IsNullOrWhiteSpace(s)) return null;
-            if (s.Equals("null", StringComparison.OrdinalIgnoreCase)) return null;
-            return s;
+            return val.ToString(); // leer, "null" usw. → trotzdem durchreichen
         }
 
-        // Für MariaDB/SQLite — gibt bereinigten String zurück
-        public static string ConvertToString(string raw, UniversalType utype)
+        // ── Für MariaDB / SQLite: gibt String zurück ───────────────────────
+        // Wenn Konvertierung fehlschlägt → raw zurückgeben, nie null
+        public static string ConvertToString(string raw, ColumnInfo info)
         {
-            if (raw == null) return null;
+            if (raw == null) return null; // Quelle war wirklich NULL
 
-            switch (utype)
+            switch (info.DateKind)
             {
-                case UniversalType.DateTime:
-                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out DateTime dt))
-                        return dt.ToString("yyyy-MM-dd HH:mm:ss");
-                    if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
-                        DateTimeStyles.None, out DateTime dt2))
-                        return dt2.ToString("yyyy-MM-dd HH:mm:ss");
-                    if (TimeSpan.TryParse(raw, out TimeSpan ts))
-                        return DateTime.Today.Add(ts).ToString("yyyy-MM-dd HH:mm:ss");
-                    return null;
-
-                case UniversalType.Date:
-                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out DateTime d))
-                        return d.ToString("yyyy-MM-dd");
-                    if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
-                        DateTimeStyles.None, out DateTime d2))
-                        return d2.ToString("yyyy-MM-dd");
-                    if (TimeSpan.TryParse(raw, out _))
-                        return DateTime.Today.ToString("yyyy-MM-dd");
-                    return null;
-
-                case UniversalType.Time:
-                    if (TimeSpan.TryParse(raw, out TimeSpan t))
-                        return t.ToString(@"hh\:mm\:ss");
-                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out DateTime dt3))
-                        return dt3.TimeOfDay.ToString(@"hh\:mm\:ss");
-                    return null;
-
-                case UniversalType.Float:
-                    // Komma → Punkt, InvariantCulture
-                    string floatStr = raw.Replace(",", ".");
-                    if (double.TryParse(floatStr, NumberStyles.Any,
-                        CultureInfo.InvariantCulture, out double dbl))
-                        return dbl.ToString(CultureInfo.InvariantCulture);
-                    return null;
-
-                case UniversalType.Decimal:
-                    string decStr = raw.Replace(",", ".");
-                    if (decimal.TryParse(decStr, NumberStyles.Any,
-                        CultureInfo.InvariantCulture, out decimal dec))
-                        return dec.ToString(CultureInfo.InvariantCulture);
-                    return null;
-
-                case UniversalType.Integer:
-                case UniversalType.BigInteger:
-                    // Vielleicht "1.0" aus SQLite
-                    string intStr = raw.Replace(",", ".");
-                    if (long.TryParse(intStr, out long l))
-                        return l.ToString();
-                    if (double.TryParse(intStr, NumberStyles.Any,
-                        CultureInfo.InvariantCulture, out double d3))
-                        return ((long)d3).ToString();
-                    return null;
-
-                case UniversalType.Boolean:
-                    if (raw == "1" || raw.Equals("true", StringComparison.OrdinalIgnoreCase))
-                        return "1";
-                    if (raw == "0" || raw.Equals("false", StringComparison.OrdinalIgnoreCase))
-                        return "0";
-                    return null;
-
+                case DbDateKind.DateOnly:
+                    {
+                        if (IsNullLike(raw)) return null;
+                        if (DateOnly.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateOnly d))
+                            return d.ToString("yyyy-MM-dd");
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateTime dt))
+                            return dt.ToString("yyyy-MM-dd");
+                        if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
+                                DateTimeStyles.None, out DateTime dt2))
+                            return dt2.ToString("yyyy-MM-dd");
+                        return null;
+                    }
+                case DbDateKind.DateTime:
+                    {
+                        if (IsNullLike(raw)) return null;
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateTime dt))
+                            return dt.ToString("yyyy-MM-dd HH:mm:ss");
+                        if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
+                                DateTimeStyles.None, out DateTime dt2))
+                            return dt2.ToString("yyyy-MM-dd HH:mm:ss");
+                        if (TimeSpan.TryParse(raw, out TimeSpan ts))
+                            return DateTime.Today.Add(ts).ToString("yyyy-MM-dd HH:mm:ss");
+                        return null;
+                    }
+                case DbDateKind.TimeOnly:
+                    {
+                        if (IsNullLike(raw)) return null;
+                        if (TimeSpan.TryParse(raw, out TimeSpan ts))
+                            return ts.ToString(@"hh\:mm\:ss");
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateTime dt))
+                            return dt.TimeOfDay.ToString(@"hh\:mm\:ss");
+                        return null;
+                    }
                 default:
-                    return raw;
+                    return ConvertScalar(raw, info);
             }
         }
 
-        // Für PostgreSQL — gibt typisierten Wert zurück
-        public static object ConvertForPostgres(string raw, UniversalType utype)
+        // ── Für PostgreSQL: gibt typisierten Wert zurück ───────────────────
+        public static object ConvertForPostgres(string raw, ColumnInfo info)
         {
             if (raw == null) return DBNull.Value;
 
-            switch (utype)
+            switch (info.DateKind)
             {
-                case UniversalType.DateTime:
-                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out DateTime dt)) return dt;
-                    if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
-                        DateTimeStyles.None, out DateTime dt2)) return dt2;
-                    if (TimeSpan.TryParse(raw, out TimeSpan ts))
-                        return DateTime.Today.Add(ts);
-                    return DBNull.Value;
-
-                case UniversalType.Date:
-                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out DateTime d))
-                        return DateOnly.FromDateTime(d);
-                    if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
-                        DateTimeStyles.None, out DateTime d2))
-                        return DateOnly.FromDateTime(d2);
-                    if (TimeSpan.TryParse(raw, out _))
-                        return DateOnly.FromDateTime(DateTime.Today);
-                    return DBNull.Value;
-
-                case UniversalType.Time:
-                    if (TimeSpan.TryParse(raw, out TimeSpan t)) return t;
-                    if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
-                        DateTimeStyles.None, out DateTime dt3))
-                        return dt3.TimeOfDay;
-                    return DBNull.Value;
-
-                case UniversalType.Float:
-                    string floatStr = raw.Replace(",", ".");
-                    if (double.TryParse(floatStr, NumberStyles.Any,
-                        CultureInfo.InvariantCulture, out double dbl)) return dbl;
-                    return DBNull.Value;
-
-                case UniversalType.Decimal:
-                    string decStr = raw.Replace(",", ".");
-                    if (decimal.TryParse(decStr, NumberStyles.Any,
-                        CultureInfo.InvariantCulture, out decimal dec)) return dec;
-                    return DBNull.Value;
-
-                case UniversalType.Integer:
-                case UniversalType.BigInteger:
-                    string intStr = raw.Replace(",", ".");
-                    if (long.TryParse(intStr, out long l)) return l;
-                    if (double.TryParse(intStr, NumberStyles.Any,
-                        CultureInfo.InvariantCulture, out double d3))
-                        return (long)d3;
-                    return DBNull.Value;
-
-                case UniversalType.Boolean:
-                    if (raw == "1" || raw.Equals("true", StringComparison.OrdinalIgnoreCase))
-                        return true;
-                    if (raw == "0" || raw.Equals("false", StringComparison.OrdinalIgnoreCase))
-                        return false;
-                    return DBNull.Value;
-
+                case DbDateKind.DateOnly:
+                    {
+                        if (IsNullLike(raw)) return DBNull.Value;
+                        if (DateOnly.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateOnly d))
+                            return d;
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateTime dt))
+                            return DateOnly.FromDateTime(dt);
+                        if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
+                                DateTimeStyles.None, out DateTime dt2))
+                            return DateOnly.FromDateTime(dt2);
+                        return DBNull.Value;
+                    }
+                case DbDateKind.DateTime:
+                    {
+                        if (IsNullLike(raw)) return DBNull.Value;
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateTime dt))
+                            return dt;
+                        if (DateTime.TryParse(raw, CultureInfo.CurrentCulture,
+                                DateTimeStyles.None, out DateTime dt2))
+                            return dt2;
+                        if (TimeSpan.TryParse(raw, out TimeSpan ts))
+                            return DateTime.Today.Add(ts);
+                        return DBNull.Value;
+                    }
+                case DbDateKind.TimeOnly:
+                    {
+                        if (IsNullLike(raw)) return DBNull.Value;
+                        if (TimeSpan.TryParse(raw, out TimeSpan ts))
+                            return ts;
+                        if (DateTime.TryParse(raw, CultureInfo.InvariantCulture,
+                                DateTimeStyles.None, out DateTime dt))
+                            return dt.TimeOfDay;
+                        return DBNull.Value;
+                    }
                 default:
-                    return raw;
+                    return ConvertScalarTyped(raw, info) ?? (object)raw;
             }
+        }
+
+        // Ist der String für typisierte Spalten semantisch NULL?
+        // ("null", leer, nur Leerzeichen) → true
+        private static bool IsNullLike(string raw)
+            => string.IsNullOrWhiteSpace(raw)
+            || raw.Equals("null", StringComparison.OrdinalIgnoreCase);
+
+        // ── Skalare Typen als String ───────────────────────────────────────
+        private static string ConvertScalar(string raw, ColumnInfo info)
+        {
+            // String-Spalten: Rohwert immer behalten (auch "null" als Text)
+            if (info.DotNetType == typeof(string)) return raw;
+
+            // Typisierte Spalten: "null"/leer → echtes NULL
+            if (IsNullLike(raw)) return null;
+
+            if (info.DotNetType == typeof(double))
+            {
+                string f = raw.Replace(",", ".");
+                if (double.TryParse(f, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out double d))
+                    return d.ToString(CultureInfo.InvariantCulture);
+                return null; // kein gültiger Wert → NULL statt kaputten String
+            }
+            if (info.DotNetType == typeof(decimal))
+            {
+                string f = raw.Replace(",", ".");
+                if (decimal.TryParse(f, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out decimal d))
+                    return d.ToString(CultureInfo.InvariantCulture);
+                return null;
+            }
+            if (info.DotNetType == typeof(long) || info.DotNetType == typeof(int))
+            {
+                string f = raw.Replace(",", ".");
+                if (long.TryParse(f, out long l)) return l.ToString();
+                if (double.TryParse(f, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out double d))
+                    return ((long)d).ToString();
+                return null;
+            }
+            if (info.DotNetType == typeof(bool))
+            {
+                if (raw == "1" || raw.Equals("true", StringComparison.OrdinalIgnoreCase)) return "1";
+                if (raw == "0" || raw.Equals("false", StringComparison.OrdinalIgnoreCase)) return "0";
+                return null;
+            }
+            return raw;
+        }
+
+        // ── Skalare Typen als typisiertes Objekt ──────────────────────────
+        private static object ConvertScalarTyped(string raw, ColumnInfo info)
+        {
+            if (info.DotNetType == typeof(string)) return raw;
+            if (IsNullLike(raw)) return null;
+
+            if (info.DotNetType == typeof(double))
+            {
+                string f = raw.Replace(",", ".");
+                if (double.TryParse(f, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out double d)) return d;
+                return null;
+            }
+            if (info.DotNetType == typeof(decimal))
+            {
+                string f = raw.Replace(",", ".");
+                if (decimal.TryParse(f, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out decimal d)) return d;
+                return null;
+            }
+            if (info.DotNetType == typeof(long) || info.DotNetType == typeof(int))
+            {
+                string f = raw.Replace(",", ".");
+                if (long.TryParse(f, out long l)) return l;
+                if (double.TryParse(f, NumberStyles.Any,
+                        CultureInfo.InvariantCulture, out double d))
+                    return (long)d;
+                return null;
+            }
+            if (info.DotNetType == typeof(bool))
+            {
+                if (raw == "1" || raw.Equals("true", StringComparison.OrdinalIgnoreCase)) return true;
+                if (raw == "0" || raw.Equals("false", StringComparison.OrdinalIgnoreCase)) return false;
+                return null;
+            }
+            return raw;
         }
     }
 }
