@@ -85,7 +85,7 @@ namespace DataHeater
             cmbSrcType.Location = new Point(48, 25);
             cmbSrcType.Size = new Size(130, 23);
             cmbSrcType.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbSrcType.Items.AddRange(new object[] { "SQLite", "MariaDB", "PostgreSQL", "Oracle" });
+            cmbSrcType.Items.AddRange(new object[] { "SQLite", "CSV", "MariaDB", "PostgreSQL", "Oracle" });
             cmbSrcType.SelectedIndex = 0;
             cmbSrcType.SelectedIndexChanged += cmbSrcType_SelectedIndexChanged;
 
@@ -144,8 +144,8 @@ namespace DataHeater
             cmbTgtType.Location = new Point(48, 25);
             cmbTgtType.Size = new Size(130, 23);
             cmbTgtType.DropDownStyle = ComboBoxStyle.DropDownList;
-            cmbTgtType.Items.AddRange(new object[] { "SQLite", "MariaDB", "PostgreSQL", "Oracle" });
-            cmbTgtType.SelectedIndex = 1;
+            cmbTgtType.Items.AddRange(new object[] { "SQLite", "CSV", "MariaDB", "PostgreSQL", "Oracle" });
+            cmbTgtType.SelectedIndex = 2;
             cmbTgtType.SelectedIndexChanged += cmbTgtType_SelectedIndexChanged;
 
             // pnlTgtSqlite
@@ -245,7 +245,7 @@ namespace DataHeater
             // ================================================================
             lblLang.AutoSize = true;
             lblLang.Location = new Point(10, 12);
-            lblLang.Text = "Language:";
+            lblLang.Text = "Lang:";
             lblLang.Font = new Font("Segoe UI", 8.5F);
             lblLang.ForeColor = Color.Gray;
 

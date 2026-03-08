@@ -1,6 +1,6 @@
 ﻿namespace DataHeater.Helper
 {
-    public enum DbType { SQLite, MariaDB, PostgreSQL, Oracle }
+    public enum DbType { SQLite, MariaDB, PostgreSQL, Oracle, CSV }
 
     public class DbTarget
     {
@@ -16,6 +16,7 @@
             DbType.SQLite => $"Data Source={Database};",
             DbType.PostgreSQL => $"Host={Host};Port={Port};Database={Database};Username={Username};Password={Password};",
             DbType.Oracle => $"Data Source={Host}:{Port}/{Database};User Id={Username};Password={Password};",
+            DbType.CSV => Database,   // Dateipfad (Quelle) oder Ordnerpfad (Ziel)
             _ => $"Server={Host};Port={Port};Database={Database};Uid={Username};Pwd={Password};"
         };
 
@@ -31,6 +32,7 @@
             DbType.SQLite => $"[SQLite] {Database}",
             DbType.PostgreSQL => $"[PostgreSQL] {Host}:{Port}/{Database}",
             DbType.Oracle => $"[Oracle] {Host}:{Port}/{Database}",
+            DbType.CSV => $"[CSV] {Database}",
             _ => $"[MariaDB] {Host}:{Port}/{Database}"
         };
     }

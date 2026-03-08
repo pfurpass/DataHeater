@@ -1,10 +1,10 @@
-using DataHeater.Helper;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using DataHeater.Helper;
 
 namespace DataHeater
 {
@@ -55,47 +55,39 @@ namespace DataHeater
             ApplyLanguage();
         }
 
-        // T() = Uebersetzungshelfer: gibt deutschen oder englischen Text zurueck
         private string T(string de, string en) => _isEnglish ? en : de;
 
         private void ApplyLanguage()
         {
-            // Form-Titel
             Text = "DataHeater \u2013 Universal DB Migration";
 
-            // Gruppen
             grpSource.Text = T("Quelle", "Source");
             grpTargets.Text = T("Ziele", "Targets");
             grpTables.Text = T("Tabellen", "Tables");
             grpMode.Text = T("Migrationsmodus", "Migration Mode");
 
-            // Typ-Labels
             lblSrcType.Text = T("Typ:", "Type:");
             lblTgtType.Text = T("Typ:", "Type:");
 
-            // Quell-Panel-Labels
             lblSrcHost.Text = "Host:";
             lblSrcPort.Text = "Port:";
             lblSrcDatabase.Text = T("Datenbank:", "Database:");
             lblSrcUsername.Text = T("Benutzer:", "User:");
             lblSrcPassword.Text = T("Passwort:", "Password:");
 
-            // Ziel-Panel-Labels
             lblTgtHost.Text = "Host:";
             lblTgtPort.Text = "Port:";
             lblTgtDatabase.Text = T("Datenbank:", "Database:");
             lblTgtUsername.Text = T("Benutzer:", "User:");
             lblTgtPassword.Text = T("Passwort:", "Password:");
 
-            // SQLite Platzhalter
-            txtSrcPath.PlaceholderText = T("Dateipfad \u2026", "File path \u2026");
-            txtTgtPath.PlaceholderText = T("Dateipfad \u2026", "File path \u2026");
+            // Placeholder je nach gewähltem Typ
+            UpdateSrcPlaceholder(cmbSrcType.SelectedItem?.ToString() ?? "");
+            UpdateTgtPlaceholder(cmbTgtType.SelectedItem?.ToString() ?? "");
 
-            // Browse-Buttons
-            btnSrcBrowse.Text = T("\U0001F4C2 ...", "\U0001F4C2 ...");
-            btnTgtBrowse.Text = T("\U0001F4C2 ...", "\U0001F4C2 ...");
+            btnSrcBrowse.Text = "\U0001F4C2 ...";
+            btnTgtBrowse.Text = "\U0001F4C2 ...";
 
-            // Quelle-Buttons (nur wenn nicht im Edit-Modus)
             if (_editSrcIdx < 0)
             {
                 btnAddSource.Text = T("\u2795 Hinzuf\u00fcgen", "\u2795 Add");
@@ -103,7 +95,6 @@ namespace DataHeater
             }
             btnRemoveSource.Text = T("\u2796 Entfernen", "\u2796 Remove");
 
-            // Ziel-Buttons (nur wenn nicht im Edit-Modus)
             if (_editTgtIdx < 0)
             {
                 btnAddTarget.Text = T("\u2795 Hinzuf\u00fcgen", "\u2795 Add");
@@ -111,14 +102,11 @@ namespace DataHeater
             }
             btnRemoveTarget.Text = T("\u2796 Entfernen", "\u2796 Remove");
 
-            // Richtung
             btnDirection.Text = "\u21c4";
 
-            // Tabellen-Buttons
             btnCheckAll.Text = T("\u2611 Alle", "\u2611 All");
             btnCheckNone.Text = T("\u2610 Keine", "\u2610 None");
 
-            // Checkboxen
             chkRenameDuplicates.Text = T(
                 "\u26a0\ufe0f Duplikate automatisch umbenennen",
                 "\u26a0\ufe0f Auto-rename duplicates");
@@ -126,35 +114,46 @@ namespace DataHeater
                 "\U0001f5c4\ufe0f Datenbank automatisch erstellen falls nicht vorhanden",
                 "\U0001f5c4\ufe0f Auto-create database if not exists");
 
-            // Modus
             rbInsert.Text = T("Nur einf\u00fcgen (INSERT)", "Insert only (INSERT)");
             rbReplace.Text = T("L\u00f6schen + neu", "Delete + re-insert");
 
-            // Aktions-Buttons
             btnConnect.Text = T("\U0001f50c Verbinden", "\U0001f50c Connect");
             btnMigrate.Text = T("Migrieren \u2192", "Migrate \u2192");
 
-            // Status
             lblLang.Text = T("Spr.:", "Lang:");
             if (lblStatus.Text == "Bereit." || lblStatus.Text == "Ready.")
                 SetStatus(T("Bereit.", "Ready."), Color.Gray);
         }
 
+        private void UpdateSrcPlaceholder(string t) =>
+            txtSrcPath.PlaceholderText = t == "CSV"
+                ? T("CSV-Datei \u2026", "CSV file \u2026")
+                : T("Dateipfad \u2026", "File path \u2026");
+
+        private void UpdateTgtPlaceholder(string t) =>
+            txtTgtPath.PlaceholderText = t == "CSV"
+                ? T("Zielordner \u2026", "Target folder \u2026")
+                : T("Dateipfad \u2026", "File path \u2026");
+
         // ── Typ-Auswahl ────────────────────────────────────────────────────
         private void cmbSrcType_SelectedIndexChanged(object sender, EventArgs e)
         {
             string t = cmbSrcType.SelectedItem?.ToString() ?? "";
-            pnlSrcSqlite.Visible = t == "SQLite";
-            pnlSrcDb.Visible = t != "SQLite";
-            if (t != "SQLite") txtSrcPort.Text = DefaultPort(t);
+            bool fileBased = t == "SQLite" || t == "CSV";
+            pnlSrcSqlite.Visible = fileBased;
+            pnlSrcDb.Visible = !fileBased;
+            if (!fileBased) txtSrcPort.Text = DefaultPort(t);
+            UpdateSrcPlaceholder(t);
         }
 
         private void cmbTgtType_SelectedIndexChanged(object sender, EventArgs e)
         {
             string t = cmbTgtType.SelectedItem?.ToString() ?? "";
-            pnlTgtSqlite.Visible = t == "SQLite";
-            pnlTgtDb.Visible = t != "SQLite";
-            if (t != "SQLite") txtTgtPort.Text = DefaultPort(t);
+            bool fileBased = t == "SQLite" || t == "CSV";
+            pnlTgtSqlite.Visible = fileBased;
+            pnlTgtDb.Visible = !fileBased;
+            if (!fileBased) txtTgtPort.Text = DefaultPort(t);
+            UpdateTgtPlaceholder(t);
         }
 
         private static string DefaultPort(string type) => type switch
@@ -167,16 +166,39 @@ namespace DataHeater
         // ── Browse ─────────────────────────────────────────────────────────
         private void btnSrcBrowse_Click(object sender, EventArgs e)
         {
-            using var d = new OpenFileDialog
-            { Filter = $"SQLite (*.db;*.sqlite)|*.db;*.sqlite|{T("Alle", "All")} (*.*)|*.*" };
-            if (d.ShowDialog() == DialogResult.OK) txtSrcPath.Text = d.FileName;
+            string t = cmbSrcType.SelectedItem?.ToString() ?? "";
+            if (t == "CSV")
+            {
+                using var d = new FolderBrowserDialog
+                { Description = T("Ordner mit CSV-Dateien wählen", "Select folder with CSV files") };
+                if (d.ShowDialog() == DialogResult.OK) txtSrcPath.Text = d.SelectedPath;
+            }
+            else
+            {
+                using var d = new OpenFileDialog
+                { Filter = $"SQLite (*.db;*.sqlite)|*.db;*.sqlite|{T("Alle", "All")} (*.*)|*.*" };
+                if (d.ShowDialog() == DialogResult.OK) txtSrcPath.Text = d.FileName;
+            }
         }
 
         private void btnTgtBrowse_Click(object sender, EventArgs e)
         {
-            using var d = new OpenFileDialog
-            { Filter = $"SQLite (*.db;*.sqlite)|*.db;*.sqlite|{T("Alle", "All")} (*.*)|*.*" };
-            if (d.ShowDialog() == DialogResult.OK) txtTgtPath.Text = d.FileName;
+            string t = cmbTgtType.SelectedItem?.ToString() ?? "";
+            if (t == "CSV")
+            {
+                using var d = new FolderBrowserDialog
+                {
+                    Description = T("Zielordner f\u00fcr CSV-Dateien w\u00e4hlen",
+                                      "Select target folder for CSV files")
+                };
+                if (d.ShowDialog() == DialogResult.OK) txtTgtPath.Text = d.SelectedPath;
+            }
+            else
+            {
+                using var d = new OpenFileDialog
+                { Filter = $"SQLite (*.db;*.sqlite)|*.db;*.sqlite|{T("Alle", "All")} (*.*)|*.*" };
+                if (d.ShowDialog() == DialogResult.OK) txtTgtPath.Text = d.FileName;
+            }
         }
 
         // ── Quelle ─────────────────────────────────────────────────────────
@@ -215,8 +237,7 @@ namespace DataHeater
         {
             if (chkSources.SelectedIndex < 0)
             {
-                MessageBox.Show(
-                    T("Bitte Eintrag ausw\u00e4hlen!", "Please select an entry!"),
+                MessageBox.Show(T("Bitte Eintrag ausw\u00e4hlen!", "Please select an entry!"),
                     T("Hinweis", "Note"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -275,8 +296,7 @@ namespace DataHeater
         {
             if (chkTargets.SelectedIndex < 0)
             {
-                MessageBox.Show(
-                    T("Bitte Eintrag ausw\u00e4hlen!", "Please select an entry!"),
+                MessageBox.Show(T("Bitte Eintrag ausw\u00e4hlen!", "Please select an entry!"),
                     T("Hinweis", "Note"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
@@ -310,9 +330,11 @@ namespace DataHeater
                 DbType.PostgreSQL => "PostgreSQL",
                 DbType.Oracle => "Oracle",
                 DbType.MariaDB => "MariaDB",
+                DbType.CSV => "CSV",
                 _ => "SQLite"
             };
-            if (t.Type == DbType.SQLite) { path.Text = t.Database; return; }
+            if (t.Type == DbType.SQLite || t.Type == DbType.CSV)
+            { path.Text = t.Database; return; }
             host.Text = t.Host; port.Text = t.Port;
             db.Text = t.Database; user.Text = t.Username; pwd.Text = t.Password;
         }
@@ -325,6 +347,7 @@ namespace DataHeater
         {
             string type = cmbType.SelectedItem?.ToString() ?? "MariaDB";
 
+            // ── SQLite ─────────────────────────────────────────────────────
             if (type == "SQLite")
             {
                 if (isSource)
@@ -338,12 +361,39 @@ namespace DataHeater
                     }
                     return new DbTarget { Type = DbType.SQLite, Database = txtPath.Text };
                 }
-                using var d = new SaveFileDialog
+                using var ds = new SaveFileDialog
                 { Filter = "SQLite (*.db)|*.db", FileName = "export.db" };
-                if (d.ShowDialog() != DialogResult.OK) return null;
-                return new DbTarget { Type = DbType.SQLite, Database = d.FileName };
+                if (ds.ShowDialog() != DialogResult.OK) return null;
+                return new DbTarget { Type = DbType.SQLite, Database = ds.FileName };
             }
 
+            // ── CSV ────────────────────────────────────────────────────────
+            if (type == "CSV")
+            {
+                if (isSource)
+                {
+                    if (string.IsNullOrWhiteSpace(txtPath.Text))
+                    {
+                        MessageBox.Show(
+                            T("Bitte CSV-Datei ausw\u00e4hlen!", "Please select a CSV file!"),
+                            T("Hinweis", "Note"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return null;
+                    }
+                    return new DbTarget { Type = DbType.CSV, Database = txtPath.Text };
+                }
+                // Ziel = Ordner
+                if (!string.IsNullOrWhiteSpace(txtPath.Text))
+                    return new DbTarget { Type = DbType.CSV, Database = txtPath.Text };
+                using var fd = new FolderBrowserDialog
+                {
+                    Description = T("Zielordner f\u00fcr CSV-Dateien w\u00e4hlen",
+                                    "Select target folder for CSV files")
+                };
+                if (fd.ShowDialog() != DialogResult.OK) return null;
+                return new DbTarget { Type = DbType.CSV, Database = fd.SelectedPath };
+            }
+
+            // ── DB-Typen ───────────────────────────────────────────────────
             if (string.IsNullOrWhiteSpace(txtHost.Text) || string.IsNullOrWhiteSpace(txtDb.Text))
             {
                 MessageBox.Show(
@@ -397,6 +447,7 @@ namespace DataHeater
             DbType.Oracle => new OracleDatabase(
                 t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked),
             DbType.SQLite => new SqliteDatabase(t.ConnectionString),
+            DbType.CSV => new CsvDatabase(t.ConnectionString),
             _ => new MariaDbDatabase(
                 t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked)
         };
@@ -513,7 +564,7 @@ namespace DataHeater
                     Color.Green);
                 Application.DoEvents();
 
-                // NULL-Pruefung
+                // NULL-Prüfung
                 var nullReport = new System.Text.StringBuilder();
                 foreach (var entry2 in entries)
                 {
