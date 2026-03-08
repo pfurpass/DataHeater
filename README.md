@@ -9,7 +9,7 @@ It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle** — in
 
 ---
 
-## ✨ Features
+## Features
 
 ### Multi‑Source & Multi‑Target Migration
 - Add **multiple source databases**
