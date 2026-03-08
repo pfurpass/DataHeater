@@ -48,7 +48,7 @@ namespace DataHeater
             ApplyLanguage();
 
             // Auto-Updater: nach dem Laden prüfen (nicht blockierend)
-            Load += (_, __) => Updater.CheckAsync(_isEnglish);
+            Load += (_, __) => Updater.CheckAsync(_isEnglish, btnConnect, btnMigrate);
         }
 
         // ── Sprache ────────────────────────────────────────────────────────
@@ -138,7 +138,7 @@ namespace DataHeater
             btnMigrate.Text = T("Migrieren \u2192", "Migrate \u2192");
 
             // Status
-            lblLang.Text = T("Sprache:", "Language:");
+            lblLang.Text = T("Spr.:", "Lang:");
             if (lblStatus.Text == "Bereit." || lblStatus.Text == "Ready.")
                 SetStatus(T("Bereit.", "Ready."), Color.Gray);
         }
