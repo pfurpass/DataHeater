@@ -71,7 +71,7 @@ namespace DataHeater
             //  grpSource
             // ================================================================
             grpSource.Text = "Quelle";
-            grpSource.Location = new Point(10, 10);
+            grpSource.Location = new Point(10, 45);
             grpSource.Size = new Size(400, 278);
             grpSource.TabStop = false;
             grpSource.Controls.AddRange(new System.Windows.Forms.Control[]
@@ -120,7 +120,7 @@ namespace DataHeater
             //  btnDirection
             // ================================================================
             btnDirection.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-            btnDirection.Location = new Point(418, 120);
+            btnDirection.Location = new Point(418, 155);
             btnDirection.Size = new Size(54, 40);
             btnDirection.Text = "=";
             btnDirection.UseVisualStyleBackColor = true;
@@ -130,7 +130,7 @@ namespace DataHeater
             //  grpTargets
             // ================================================================
             grpTargets.Text = "Ziele";
-            grpTargets.Location = new Point(480, 10);
+            grpTargets.Location = new Point(480, 45);
             grpTargets.Size = new Size(410, 278);
             grpTargets.TabStop = false;
             grpTargets.Controls.AddRange(new System.Windows.Forms.Control[]
@@ -179,7 +179,7 @@ namespace DataHeater
             //  grpTables
             // ================================================================
             grpTables.Text = "Tabellen";
-            grpTables.Location = new Point(10, 298);
+            grpTables.Location = new Point(10, 333);
             grpTables.Size = new Size(880, 202);
             grpTables.TabStop = false;
             grpTables.Controls.AddRange(new System.Windows.Forms.Control[]
@@ -209,7 +209,7 @@ namespace DataHeater
             //  grpMode + Buttons + Status
             // ================================================================
             grpMode.Text = "Migrationsmodus";
-            grpMode.Location = new Point(10, 510);
+            grpMode.Location = new Point(10, 545);
             grpMode.Size = new Size(310, 46);
             grpMode.TabStop = false;
             grpMode.Controls.AddRange(new System.Windows.Forms.Control[] { rbInsert, rbReplace });
@@ -219,7 +219,7 @@ namespace DataHeater
             rbReplace.AutoSize = true;
             rbReplace.Location = new Point(175, 20); rbReplace.Text = "Loeschen + neu";
 
-            btnConnect.Location = new Point(330, 515);
+            btnConnect.Location = new Point(330, 550);
             btnConnect.Size = new Size(130, 36);
             btnConnect.Text = "Verbinden";
             btnConnect.UseVisualStyleBackColor = true;
@@ -228,15 +228,15 @@ namespace DataHeater
             btnMigrate.BackColor = Color.SteelBlue;
             btnMigrate.ForeColor = Color.White;
             btnMigrate.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-            btnMigrate.Location = new Point(470, 515);
+            btnMigrate.Location = new Point(470, 550);
             btnMigrate.Size = new Size(130, 36);
             btnMigrate.Text = "Migrieren";
             btnMigrate.UseVisualStyleBackColor = false;
             btnMigrate.Click += btnMigrate_Click;
 
             lblStatus.AutoSize = false;
-            lblStatus.Location = new Point(615, 525);
-            lblStatus.Size = new Size(140, 20);
+            lblStatus.Location = new Point(330, 560);
+            lblStatus.Size = new Size(555, 20);
             lblStatus.Text = "Bereit.";
             lblStatus.ForeColor = Color.Gray;
 
@@ -244,12 +244,13 @@ namespace DataHeater
             //  Sprache / Language
             // ================================================================
             lblLang.AutoSize = true;
-            lblLang.Location = new Point(762, 523);
+            lblLang.Location = new Point(10, 12);
             lblLang.Text = "Lang:";
             lblLang.Font = new Font("Segoe UI", 8.5F);
+            lblLang.ForeColor = Color.Gray;
 
-            cmbLanguage.Location = new Point(805, 519);
-            cmbLanguage.Size = new Size(85, 23);
+            cmbLanguage.Location = new Point(85, 8);
+            cmbLanguage.Size = new Size(120, 23);
             cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbLanguage.Items.AddRange(new object[] { "Deutsch", "English" });
             cmbLanguage.SelectedIndex = 1;
@@ -260,7 +261,7 @@ namespace DataHeater
             // ================================================================
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(900, 565);
+            ClientSize = new Size(900, 600);
             Text = "DataHeater - Universal DB Migration";
             Controls.AddRange(new System.Windows.Forms.Control[]
             {
@@ -284,7 +285,7 @@ namespace DataHeater
             L(lUser, 0, 65, "Benutzer:"); T(tUser, 75, 63, pnl.Width - 80, "root");
             L(lPwd, 0, 95, "Passwort:"); T(tPwd, 75, 93, pnl.Width - 80, "");
             tPwd.PasswordChar = '●';
-            tDb.PlaceholderText = "";
+            tDb.PlaceholderText = "datenbankname";
             pnl.Controls.AddRange(new System.Windows.Forms.Control[]
                 { lHost, tHost, lPort, tPort, lDb, tDb, lUser, tUser, lPwd, tPwd });
 
