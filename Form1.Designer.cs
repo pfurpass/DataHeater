@@ -13,6 +13,7 @@ namespace DataHeater
         {
             System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(Form1));
             Icon = (Icon)resources.GetObject("$this.Icon");
+
             grpSource = new GroupBox();
             lblSrcType = new Label();
             cmbSrcType = new ComboBox();
@@ -63,6 +64,9 @@ namespace DataHeater
             btnMigrate = new Button();
             lblStatus = new Label();
 
+            lblLang = new Label();
+            cmbLanguage = new ComboBox();
+
             // ================================================================
             //  grpSource
             // ================================================================
@@ -89,9 +93,9 @@ namespace DataHeater
             pnlSrcSqlite.Location = new Point(10, 56);
             pnlSrcSqlite.Size = new Size(378, 28);
             txtSrcPath.Location = new Point(0, 2); txtSrcPath.Size = new Size(286, 23);
-            txtSrcPath.PlaceholderText = "Dateipfad …";
+            txtSrcPath.PlaceholderText = "Dateipfad ...";
             btnSrcBrowse.Location = new Point(293, 1); btnSrcBrowse.Size = new Size(80, 25);
-            btnSrcBrowse.Text = "📂 ..."; btnSrcBrowse.UseVisualStyleBackColor = true;
+            btnSrcBrowse.Text = "Oeffnen"; btnSrcBrowse.UseVisualStyleBackColor = true;
             btnSrcBrowse.Click += btnSrcBrowse_Click;
             pnlSrcSqlite.Controls.AddRange(new System.Windows.Forms.Control[] { txtSrcPath, btnSrcBrowse });
 
@@ -103,9 +107,9 @@ namespace DataHeater
                 lblSrcDatabase, txtSrcDatabase, lblSrcUsername, txtSrcUsername,
                 lblSrcPassword, txtSrcPassword);
 
-            Btn(btnAddSource, 10, 192, 110, "➕ Hinzufügen", btnAddSource_Click);
-            Btn(btnRemoveSource, 128, 192, 110, "➖ Entfernen", btnRemoveSource_Click);
-            Btn(btnEditSource, 246, 192, 110, "✏️ Bearbeiten", btnEditSource_Click);
+            Btn(btnAddSource, 10, 192, 110, "Hinzufuegen", btnAddSource_Click);
+            Btn(btnRemoveSource, 128, 192, 110, "Entfernen", btnRemoveSource_Click);
+            Btn(btnEditSource, 246, 192, 110, "Bearbeiten", btnEditSource_Click);
 
             chkSources.FormattingEnabled = true;
             chkSources.CheckOnClick = true;
@@ -118,7 +122,7 @@ namespace DataHeater
             btnDirection.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
             btnDirection.Location = new Point(418, 120);
             btnDirection.Size = new Size(54, 40);
-            btnDirection.Text = "⇄";
+            btnDirection.Text = "=";
             btnDirection.UseVisualStyleBackColor = true;
             btnDirection.Click += btnDirection_Click;
 
@@ -141,16 +145,16 @@ namespace DataHeater
             cmbTgtType.Size = new Size(130, 23);
             cmbTgtType.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbTgtType.Items.AddRange(new object[] { "SQLite", "MariaDB", "PostgreSQL", "Oracle" });
-            cmbTgtType.SelectedIndex = 1;   // MariaDB default
+            cmbTgtType.SelectedIndex = 1;
             cmbTgtType.SelectedIndexChanged += cmbTgtType_SelectedIndexChanged;
 
             // pnlTgtSqlite
             pnlTgtSqlite.Location = new Point(10, 56);
             pnlTgtSqlite.Size = new Size(388, 28);
             txtTgtPath.Location = new Point(0, 2); txtTgtPath.Size = new Size(296, 23);
-            txtTgtPath.PlaceholderText = "Dateipfad …";
+            txtTgtPath.PlaceholderText = "Dateipfad ...";
             btnTgtBrowse.Location = new Point(303, 1); btnTgtBrowse.Size = new Size(80, 25);
-            btnTgtBrowse.Text = "📂 ..."; btnTgtBrowse.UseVisualStyleBackColor = true;
+            btnTgtBrowse.Text = "Oeffnen"; btnTgtBrowse.UseVisualStyleBackColor = true;
             btnTgtBrowse.Click += btnTgtBrowse_Click;
             pnlTgtSqlite.Controls.AddRange(new System.Windows.Forms.Control[] { txtTgtPath, btnTgtBrowse });
 
@@ -162,9 +166,9 @@ namespace DataHeater
                 lblTgtDatabase, txtTgtDatabase, lblTgtUsername, txtTgtUsername,
                 lblTgtPassword, txtTgtPassword);
 
-            Btn(btnAddTarget, 10, 192, 110, "➕ Hinzufügen", btnAddTarget_Click);
-            Btn(btnRemoveTarget, 128, 192, 110, "➖ Entfernen", btnRemoveTarget_Click);
-            Btn(btnEditTarget, 246, 192, 110, "✏️ Bearbeiten", btnEditTarget_Click);
+            Btn(btnAddTarget, 10, 192, 110, "Hinzufuegen", btnAddTarget_Click);
+            Btn(btnRemoveTarget, 128, 192, 110, "Entfernen", btnRemoveTarget_Click);
+            Btn(btnEditTarget, 246, 192, 110, "Bearbeiten", btnEditTarget_Click);
 
             chkTargets.FormattingEnabled = true;
             chkTargets.CheckOnClick = true;
@@ -186,19 +190,19 @@ namespace DataHeater
             listTables.Location = new Point(10, 22);
             listTables.Size = new Size(858, 108);
 
-            Btn(btnCheckAll, 10, 138, 100, "☑ Alle", btnCheckAll_Click);
-            Btn(btnCheckNone, 118, 138, 100, "☐ Keine", btnCheckNone_Click);
+            Btn(btnCheckAll, 10, 138, 100, "Alle", btnCheckAll_Click);
+            Btn(btnCheckNone, 118, 138, 100, "Keine", btnCheckNone_Click);
 
             chkRenameDuplicates.AutoSize = true;
             chkRenameDuplicates.Location = new Point(230, 141);
-            chkRenameDuplicates.Text = "⚠️ Duplikate automatisch umbenennen";
+            chkRenameDuplicates.Text = "Duplikate automatisch umbenennen";
             chkRenameDuplicates.Font = new Font("Segoe UI", 8.5F);
             chkRenameDuplicates.ForeColor = Color.DarkOrange;
 
             chkCreateDb.AutoSize = true;
             chkCreateDb.Checked = true;
             chkCreateDb.Location = new Point(10, 167);
-            chkCreateDb.Text = "🗄️ Datenbank automatisch erstellen falls nicht vorhanden";
+            chkCreateDb.Text = "Datenbank automatisch erstellen falls nicht vorhanden";
             chkCreateDb.Font = new Font("Segoe UI", 8.5F);
 
             // ================================================================
@@ -211,13 +215,13 @@ namespace DataHeater
             grpMode.Controls.AddRange(new System.Windows.Forms.Control[] { rbInsert, rbReplace });
 
             rbInsert.AutoSize = true; rbInsert.Checked = true;
-            rbInsert.Location = new Point(10, 20); rbInsert.Text = "Nur einfügen (INSERT)";
+            rbInsert.Location = new Point(10, 20); rbInsert.Text = "Nur einfuegen (INSERT)";
             rbReplace.AutoSize = true;
-            rbReplace.Location = new Point(175, 20); rbReplace.Text = "Löschen + neu";
+            rbReplace.Location = new Point(175, 20); rbReplace.Text = "Loeschen + neu";
 
             btnConnect.Location = new Point(330, 515);
             btnConnect.Size = new Size(130, 36);
-            btnConnect.Text = "🔌 Verbinden";
+            btnConnect.Text = "Verbinden";
             btnConnect.UseVisualStyleBackColor = true;
             btnConnect.Click += btnConnect_Click;
 
@@ -226,15 +230,30 @@ namespace DataHeater
             btnMigrate.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             btnMigrate.Location = new Point(470, 515);
             btnMigrate.Size = new Size(130, 36);
-            btnMigrate.Text = "Migrieren →";
+            btnMigrate.Text = "Migrieren";
             btnMigrate.UseVisualStyleBackColor = false;
             btnMigrate.Click += btnMigrate_Click;
 
             lblStatus.AutoSize = false;
             lblStatus.Location = new Point(615, 525);
-            lblStatus.Size = new Size(275, 20);
+            lblStatus.Size = new Size(140, 20);
             lblStatus.Text = "Bereit.";
             lblStatus.ForeColor = Color.Gray;
+
+            // ================================================================
+            //  Sprache / Language
+            // ================================================================
+            lblLang.AutoSize = true;
+            lblLang.Location = new Point(762, 523);
+            lblLang.Text = "Lang:";
+            lblLang.Font = new Font("Segoe UI", 8.5F);
+
+            cmbLanguage.Location = new Point(805, 519);
+            cmbLanguage.Size = new Size(85, 23);
+            cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
+            cmbLanguage.Items.AddRange(new object[] { "Deutsch", "English" });
+            cmbLanguage.SelectedIndex = 0;
+            cmbLanguage.SelectedIndexChanged += cmbLanguage_SelectedIndexChanged;
 
             // ================================================================
             //  Form
@@ -242,12 +261,15 @@ namespace DataHeater
             AutoScaleDimensions = new SizeF(7F, 15F);
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(900, 565);
-            Text = "DataHeater – Universal DB Migration";
+            Text = "DataHeater - Universal DB Migration";
             Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 grpSource, btnDirection, grpTargets,
-                grpTables, grpMode, btnConnect, btnMigrate, lblStatus
+                grpTables, grpMode, btnConnect, btnMigrate,
+                lblStatus, lblLang, cmbLanguage
             });
+
+            // Texte korrekt setzen (ApplyLanguage wird im Konstruktor aufgerufen)
         }
 
         // ── Hilfsmethoden ──────────────────────────────────────────────────
@@ -314,5 +336,7 @@ namespace DataHeater
         private RadioButton rbInsert, rbReplace;
         private Button btnConnect, btnMigrate;
         private Label lblStatus;
+        private Label lblLang;
+        private ComboBox cmbLanguage;
     }
 }

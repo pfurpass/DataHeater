@@ -112,7 +112,10 @@ namespace DataHeater.Helper
                         return DBNull.Value;
                     }
                 default:
-                    return ConvertScalarTyped(raw, info) ?? (object)raw;
+                    // Wenn ConvertScalarTyped null zurückgibt (IsNullLike oder Parse-Fehler)
+                    // → DBNull, NIEMALS den Raw-String durchreichen (würde z.B. "null" an BIGINT schicken)
+                    var typed = ConvertScalarTyped(raw, info);
+                    return typed ?? DBNull.Value;
             }
         }
 

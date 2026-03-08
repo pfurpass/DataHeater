@@ -112,8 +112,9 @@ namespace DataHeater.Helper
 
                     var info = TypeMapper.FromDataColumn(col);
                     string conv = DbConverter.ConvertToString(raw, info);
-                    // conv ist NIE null wenn raw != null (Fallback = raw selbst)
-                    cmd.Parameters.AddWithValue(pname, conv);
+                    // conv kann null sein (IsNullLike oder Parse-Fehler bei typisierten Spalten)
+                    // SQLite wirft "Value must be set" bei C#-null → DBNull.Value verwenden
+                    cmd.Parameters.AddWithValue(pname, (object)conv ?? DBNull.Value);
                 }
                 await cmd.ExecuteNonQueryAsync();
             }
