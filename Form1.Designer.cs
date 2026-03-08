@@ -252,7 +252,7 @@ namespace DataHeater
             cmbLanguage.Size = new Size(85, 23);
             cmbLanguage.DropDownStyle = ComboBoxStyle.DropDownList;
             cmbLanguage.Items.AddRange(new object[] { "Deutsch", "English" });
-            cmbLanguage.SelectedIndex = 0;
+            cmbLanguage.SelectedIndex = 1;
             cmbLanguage.SelectedIndexChanged += cmbLanguage_SelectedIndexChanged;
 
             // ================================================================
@@ -280,11 +280,11 @@ namespace DataHeater
         {
             L(lHost, 0, 5, "Host:"); T(tHost, 75, 3, 150, "localhost");
             L(lPort, 235, 5, "Port:"); T(tPort, 268, 3, 60, "3306");
-            L(lDb, 0, 35, "Datenbank:"); T(tDb, 75, 33, pnl.Width - 80, "datenbankname");
+            L(lDb, 0, 35, "Datenbank:"); T(tDb, 75, 33, pnl.Width - 80, "");
             L(lUser, 0, 65, "Benutzer:"); T(tUser, 75, 63, pnl.Width - 80, "root");
             L(lPwd, 0, 95, "Passwort:"); T(tPwd, 75, 93, pnl.Width - 80, "");
             tPwd.PasswordChar = '●';
-            tDb.PlaceholderText = "datenbankname";
+            tDb.PlaceholderText = "";
             pnl.Controls.AddRange(new System.Windows.Forms.Control[]
                 { lHost, tHost, lPort, tPort, lDb, tDb, lUser, tUser, lPwd, tPwd });
 

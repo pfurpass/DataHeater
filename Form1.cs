@@ -14,7 +14,7 @@ namespace DataHeater
         private readonly List<DbTarget> _targets = new();
         private int _editSrcIdx = -1;
         private int _editTgtIdx = -1;
-        private bool _isEnglish = false;
+        private bool _isEnglish = true;
 
         private class TableEntry
         {
