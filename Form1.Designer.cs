@@ -245,7 +245,7 @@ namespace DataHeater
             // ================================================================
             lblLang.AutoSize = true;
             lblLang.Location = new Point(10, 12);
-            lblLang.Text = "Lang:";
+            lblLang.Text = "Language:";
             lblLang.Font = new Font("Segoe UI", 8.5F);
             lblLang.ForeColor = Color.Gray;
 

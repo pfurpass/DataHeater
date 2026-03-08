@@ -1,10 +1,10 @@
+using DataHeater.Helper;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using DataHeater.Helper;
 
 namespace DataHeater
 {
@@ -46,9 +46,6 @@ namespace DataHeater
             };
 
             ApplyLanguage();
-
-            // Auto-Updater: nach dem Laden prüfen (nicht blockierend)
-            Load += (_, __) => Updater.CheckAsync(_isEnglish, btnConnect, btnMigrate);
         }
 
         // ── Sprache ────────────────────────────────────────────────────────
