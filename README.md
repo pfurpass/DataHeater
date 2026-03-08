@@ -1,7 +1,7 @@
 # 🔥 DataHeater – Universal Database Migration Tool
 
 **DataHeater** is a powerful Windows desktop tool for migrating data between multiple database systems — quickly, safely, and without installation.  
-It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incoming)** — in **both directions**.
+It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle** — in **both directions**.
 
 <!-- ![icon](./github/img/icon_256x256.ico) -->
 
@@ -16,7 +16,7 @@ It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incomin
 - Add **multiple target databases**
 - Migrate tables from several sources into several targets in one run
 
-### 🆕 Oracle Support (Incoming)
+### 🆕 Oracle Support
 - Oracle support is being integrated into the system
 - UI and configuration already prepared
 - Full Oracle migration support will be available soon
@@ -42,7 +42,7 @@ It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incomin
 - Perfect for reverse migrations
 
 ### 🆕 Automatic Database Creation
-- For MariaDB, PostgreSQL, and Oracle (incoming)
+- For MariaDB, PostgreSQL, and Oracle
 - Creates the target database automatically if it does not exist
 
 ### 🆕 Parallel Multi‑Target Migration
@@ -60,7 +60,7 @@ It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incomin
 | SQLite        | ✔️     | ✔️     |
 | MariaDB/MySQL | ✔️     | ✔️     |
 | PostgreSQL    | ✔️     | ✔️     |
-| Oracle        | ⚠️ Incoming | ⚠️ Incoming |
+| Oracle        | ✔️     | ✔️     |
 
 ---
 
@@ -121,7 +121,7 @@ It supports **SQLite**, **MariaDB/MySQL**, **PostgreSQL**, and **Oracle (incomin
 - Microsoft.Data.Sqlite
 - MySql.Data
 - Npgsql
-- Oracle Managed Data Access (incoming)
+- Oracle Managed Data Access
 
 ---
 
