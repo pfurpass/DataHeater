@@ -81,7 +81,6 @@ namespace DataHeater
             lblTgtUsername.Text = T("Benutzer:", "User:");
             lblTgtPassword.Text = T("Passwort:", "Password:");
 
-            // Placeholder je nach gewähltem Typ
             UpdateSrcPlaceholder(cmbSrcType.SelectedItem?.ToString() ?? "");
             UpdateTgtPlaceholder(cmbTgtType.SelectedItem?.ToString() ?? "");
 
@@ -126,33 +125,40 @@ namespace DataHeater
         }
 
         private void UpdateSrcPlaceholder(string t) =>
-            txtSrcPath.PlaceholderText = t == "CSV"
-                ? T("CSV-Datei \u2026", "CSV file \u2026")
-                : T("Dateipfad \u2026", "File path \u2026");
+            txtSrcPath.PlaceholderText = t switch
+            {
+                "CSV" => T("Ordner mit CSV-Dateien \u2026", "Folder with CSV files \u2026"),
+                "Excel" => T("Excel-Datei (.xlsx) \u2026", "Excel file (.xlsx) \u2026"),
+                _ => T("Dateipfad \u2026", "File path \u2026")
+            };
 
         private void UpdateTgtPlaceholder(string t) =>
-            txtTgtPath.PlaceholderText = t == "CSV"
-                ? T("Zielordner \u2026", "Target folder \u2026")
-                : T("Dateipfad \u2026", "File path \u2026");
+            txtTgtPath.PlaceholderText = t switch
+            {
+                "CSV" => T("Zielordner \u2026", "Target folder \u2026"),
+                "Excel" => T("Excel-Datei (.xlsx) \u2026", "Excel file (.xlsx) \u2026"),
+                _ => T("Dateipfad \u2026", "File path \u2026")
+            };
 
         // ── Typ-Auswahl ────────────────────────────────────────────────────
+        private static bool IsFileBased(string t) =>
+            t == "SQLite" || t == "CSV" || t == "Excel";
+
         private void cmbSrcType_SelectedIndexChanged(object sender, EventArgs e)
         {
             string t = cmbSrcType.SelectedItem?.ToString() ?? "";
-            bool fileBased = t == "SQLite" || t == "CSV";
-            pnlSrcSqlite.Visible = fileBased;
-            pnlSrcDb.Visible = !fileBased;
-            if (!fileBased) txtSrcPort.Text = DefaultPort(t);
+            pnlSrcSqlite.Visible = IsFileBased(t);
+            pnlSrcDb.Visible = !IsFileBased(t);
+            if (!IsFileBased(t)) txtSrcPort.Text = DefaultPort(t);
             UpdateSrcPlaceholder(t);
         }
 
         private void cmbTgtType_SelectedIndexChanged(object sender, EventArgs e)
         {
             string t = cmbTgtType.SelectedItem?.ToString() ?? "";
-            bool fileBased = t == "SQLite" || t == "CSV";
-            pnlTgtSqlite.Visible = fileBased;
-            pnlTgtDb.Visible = !fileBased;
-            if (!fileBased) txtTgtPort.Text = DefaultPort(t);
+            pnlTgtSqlite.Visible = IsFileBased(t);
+            pnlTgtDb.Visible = !IsFileBased(t);
+            if (!IsFileBased(t)) txtTgtPort.Text = DefaultPort(t);
             UpdateTgtPlaceholder(t);
         }
 
@@ -170,8 +176,14 @@ namespace DataHeater
             if (t == "CSV")
             {
                 using var d = new FolderBrowserDialog
-                { Description = T("Ordner mit CSV-Dateien wählen", "Select folder with CSV files") };
+                { Description = T("Ordner mit CSV-Dateien w\u00e4hlen", "Select folder with CSV files") };
                 if (d.ShowDialog() == DialogResult.OK) txtSrcPath.Text = d.SelectedPath;
+            }
+            else if (t == "Excel")
+            {
+                using var d = new OpenFileDialog
+                { Filter = "Excel (*.xlsx)|*.xlsx", Title = T("Excel-Datei \u00f6ffnen", "Open Excel file") };
+                if (d.ShowDialog() == DialogResult.OK) txtSrcPath.Text = d.FileName;
             }
             else
             {
@@ -187,11 +199,14 @@ namespace DataHeater
             if (t == "CSV")
             {
                 using var d = new FolderBrowserDialog
-                {
-                    Description = T("Zielordner f\u00fcr CSV-Dateien w\u00e4hlen",
-                                      "Select target folder for CSV files")
-                };
+                { Description = T("Zielordner f\u00fcr CSV-Dateien w\u00e4hlen", "Select target folder for CSV files") };
                 if (d.ShowDialog() == DialogResult.OK) txtTgtPath.Text = d.SelectedPath;
+            }
+            else if (t == "Excel")
+            {
+                using var d = new SaveFileDialog
+                { Filter = "Excel (*.xlsx)|*.xlsx", FileName = "export.xlsx", Title = T("Excel-Zieldatei w\u00e4hlen", "Choose target Excel file") };
+                if (d.ShowDialog() == DialogResult.OK) txtTgtPath.Text = d.FileName;
             }
             else
             {
@@ -331,9 +346,10 @@ namespace DataHeater
                 DbType.Oracle => "Oracle",
                 DbType.MariaDB => "MariaDB",
                 DbType.CSV => "CSV",
+                DbType.Excel => "Excel",
                 _ => "SQLite"
             };
-            if (t.Type == DbType.SQLite || t.Type == DbType.CSV)
+            if (t.Type == DbType.SQLite || t.Type == DbType.CSV || t.Type == DbType.Excel)
             { path.Text = t.Database; return; }
             host.Text = t.Host; port.Text = t.Port;
             db.Text = t.Database; user.Text = t.Username; pwd.Text = t.Password;
@@ -355,7 +371,7 @@ namespace DataHeater
                     if (string.IsNullOrWhiteSpace(txtPath.Text))
                     {
                         MessageBox.Show(
-                            T("Bitte SQLite Datei ausw\u00e4hlen!", "Please select a SQLite file!"),
+                            T("Bitte SQLite-Datei ausw\u00e4hlen!", "Please select a SQLite file!"),
                             T("Hinweis", "Note"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         return null;
                     }
@@ -370,27 +386,45 @@ namespace DataHeater
             // ── CSV ────────────────────────────────────────────────────────
             if (type == "CSV")
             {
+                if (string.IsNullOrWhiteSpace(txtPath.Text))
+                {
+                    using var fd = new FolderBrowserDialog
+                    {
+                        Description = isSource
+                            ? T("Ordner mit CSV-Dateien w\u00e4hlen", "Select folder with CSV files")
+                            : T("Zielordner f\u00fcr CSV-Dateien w\u00e4hlen", "Select target folder for CSV files")
+                    };
+                    if (fd.ShowDialog() != DialogResult.OK) return null;
+                    txtPath.Text = fd.SelectedPath;
+                }
+                return new DbTarget { Type = DbType.CSV, Database = txtPath.Text };
+            }
+
+            // ── Excel ──────────────────────────────────────────────────────
+            if (type == "Excel")
+            {
                 if (isSource)
                 {
                     if (string.IsNullOrWhiteSpace(txtPath.Text))
                     {
-                        MessageBox.Show(
-                            T("Bitte CSV-Datei ausw\u00e4hlen!", "Please select a CSV file!"),
-                            T("Hinweis", "Note"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                        return null;
+                        using var od = new OpenFileDialog
+                        { Filter = "Excel (*.xlsx)|*.xlsx", Title = T("Excel-Datei \u00f6ffnen", "Open Excel file") };
+                        if (od.ShowDialog() != DialogResult.OK) return null;
+                        txtPath.Text = od.FileName;
                     }
-                    return new DbTarget { Type = DbType.CSV, Database = txtPath.Text };
+                    return new DbTarget { Type = DbType.Excel, Database = txtPath.Text };
                 }
-                // Ziel = Ordner
-                if (!string.IsNullOrWhiteSpace(txtPath.Text))
-                    return new DbTarget { Type = DbType.CSV, Database = txtPath.Text };
-                using var fd = new FolderBrowserDialog
+                else
                 {
-                    Description = T("Zielordner f\u00fcr CSV-Dateien w\u00e4hlen",
-                                    "Select target folder for CSV files")
-                };
-                if (fd.ShowDialog() != DialogResult.OK) return null;
-                return new DbTarget { Type = DbType.CSV, Database = fd.SelectedPath };
+                    if (string.IsNullOrWhiteSpace(txtPath.Text))
+                    {
+                        using var sd = new SaveFileDialog
+                        { Filter = "Excel (*.xlsx)|*.xlsx", FileName = "export.xlsx" };
+                        if (sd.ShowDialog() != DialogResult.OK) return null;
+                        txtPath.Text = sd.FileName;
+                    }
+                    return new DbTarget { Type = DbType.Excel, Database = txtPath.Text };
+                }
             }
 
             // ── DB-Typen ───────────────────────────────────────────────────
@@ -448,6 +482,7 @@ namespace DataHeater
                 t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked),
             DbType.SQLite => new SqliteDatabase(t.ConnectionString),
             DbType.CSV => new CsvDatabase(t.ConnectionString),
+            DbType.Excel => new ExcelDatabase(t.ConnectionString),
             _ => new MariaDbDatabase(
                 t.ConnectionString, t.ConnectionStringWithoutDb, t.Database, chkCreateDb.Checked)
         };
