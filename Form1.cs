@@ -46,6 +46,9 @@ namespace DataHeater
             };
 
             ApplyLanguage();
+
+            // Auto-Updater: nach dem Laden prüfen (nicht blockierend)
+            Load += (_, __) => Updater.CheckAsync(_isEnglish);
         }
 
         // ── Sprache ────────────────────────────────────────────────────────
