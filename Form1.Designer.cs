@@ -263,6 +263,7 @@ namespace DataHeater
             AutoScaleMode = AutoScaleMode.Font;
             ClientSize = new Size(900, 600);
             Text = "DataHeater - Universal DB Migration";
+            MaximizeBox = false;
             Controls.AddRange(new System.Windows.Forms.Control[]
             {
                 grpSource, btnDirection, grpTargets,
