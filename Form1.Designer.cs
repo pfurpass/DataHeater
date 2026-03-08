@@ -286,7 +286,6 @@ namespace DataHeater
             L(lUser, 0, 65, "Benutzer:"); T(tUser, 75, 63, pnl.Width - 80, "root");
             L(lPwd, 0, 95, "Passwort:"); T(tPwd, 75, 93, pnl.Width - 80, "");
             tPwd.PasswordChar = '●';
-            tDb.PlaceholderText = "datenbankname";
             pnl.Controls.AddRange(new System.Windows.Forms.Control[]
                 { lHost, tHost, lPort, tPort, lDb, tDb, lUser, tUser, lPwd, tPwd });
 
